@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>块式富文本编辑器</title>
+  <link rel="stylesheet" href="./editor.css">
+  <style>
+    html { color-scheme: light; background: #f4f6f8; color: #232a34; font: 15px system-ui, sans-serif; }
+    html[data-theme=dark] { color-scheme: dark; background: #141820; color: #e9edf5; }
+    body { max-width: 860px; margin: 40px auto; padding: 0 20px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    h1 { margin: 0; font-size: 22px; }
+    output { display: block; margin: 8px 0 16px; font-size: 12px; }
+    button { font: inherit; }
+    #editor { --bek-height: clamp(300px, 68vh, 680px); }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>块式富文本编辑器</h1>
+    <button id="theme" type="button" aria-pressed="false">深色模式</button>
+  </header>
+  <output id="status" aria-live="polite">自动保存</output>
+  <div id="editor"></div>
+  <script type="module">
+    import { mountBlockEditor } from './editor.js';
+
+    const storageKey = 'block-editor-kit.demo.document';
+    const status = document.querySelector('#status');
+    const initialHTML = '<h3>编辑这份示例</h3><p>试试回车拆块、拖动文字左侧的手柄，或在表格里调整列宽。</p><ul><li>在列表中按 Tab 缩进</li><li>用 Shift+Tab 退回上一级</li></ul><table data-header-row="true"><tbody><tr><th>事项</th><th>说明</th></tr><tr><td>块编辑</td><td>输入 * 和空格创建项目符号</td></tr><tr><td>表格</td><td>点击左上角菜单调整结构</td></tr></tbody></table>';
+
+    let previous = initialHTML;
+    try {
+      previous = localStorage.getItem(storageKey) ?? initialHTML;
+    } catch {
+      status.textContent = '当前浏览器无法读取本地草稿';
+    }
+
+    let timer;
+    let pending;
+    function save() {
+      if (pending === undefined) return;
+      try {
+        localStorage.setItem(storageKey, pending);
+        pending = undefined;
+        status.textContent = '已保存到当前浏览器';
+      } catch {
+        status.textContent = '本地保存失败';
+      }
+    }
+
+    mountBlockEditor(document.querySelector('#editor'), {
+      label: '示例正文',
+      html: previous,
+      onChange(html) {
+        pending = html;
+        status.textContent = '待保存';
+        clearTimeout(timer);
+        timer = setTimeout(save, 600);
+      }
+    });
+    window.addEventListener('pagehide', save);
+
+    document.querySelector('#theme').addEventListener('click', event => {
+      const enabled = document.documentElement.dataset.theme !== 'dark';
+      document.documentElement.dataset.theme = enabled ? 'dark' : 'light';
+      event.currentTarget.setAttribute('aria-pressed', enabled);
+    });
+  </script>
+</body>
+</html>

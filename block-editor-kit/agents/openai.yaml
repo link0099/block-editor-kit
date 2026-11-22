@@ -1,0 +1,4 @@
+interface:
+  display_name: "块式富文本编辑器"
+  short_description: "Build block editors with rich text and tables"
+  default_prompt: "Use $block-editor-kit to add a reusable block-based rich-text editor to this app."

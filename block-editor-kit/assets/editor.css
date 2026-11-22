@@ -1,0 +1,218 @@
+/* Theme tokens inherit from the surrounding application. */
+.block-editor-kit {
+ --surface:var(--bek-surface,#fff);
+ --surface-soft:var(--bek-soft,#f4f6f8);
+ --surface-hover:var(--bek-hover,#edf2f7);
+ --text:var(--bek-text,#232a34);
+ --muted:var(--bek-muted,#627084);
+ --line:var(--bek-line,#d9e0e7);
+ --type-status:var(--bek-accent,#2864be);
+ --type-body:var(--bek-font-size,14px);
+ --type-caption:12px;
+ --note-selection:var(--bek-selection,#c9dff5);
+ display:flex;flex-direction:column;min-width:0;
+ height:var(--bek-height,24rem);background:var(--surface);color:var(--text);
+ font-family:inherit;
+}
+[data-theme=dark] .block-editor-kit,.block-editor-kit[data-theme=dark] {
+ --surface:var(--bek-surface,#1b2029);
+ --surface-soft:var(--bek-soft,#262e3a);
+ --surface-hover:var(--bek-hover,#2d394a);
+ --text:var(--bek-text,#e9edf5);
+ --muted:var(--bek-muted,#a0aec0);
+ --line:var(--bek-line,#394658);
+ --type-status:var(--bek-accent,#8db9ff);
+ --note-selection:var(--bek-selection,#30465f);
+}
+@scope (.block-editor-kit) {
+ *, *::before, *::after {box-sizing:border-box}
+ button {font:inherit;color:inherit}
+ .bek-tools {padding-inline:12px;position:relative;z-index:9}
+ .note-color-red{color:var(--bek-red,#e34242)!important}
+ .note-color-green{color:var(--bek-green,#129966)!important}
+ .note-color-yellow{color:var(--bek-yellow,#b58a16)!important}
+.note-rich-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.note-rich-toolbar button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--muted)}.note-rich-toolbar button:hover{background:var(--surface-hover);color:var(--text)}.note-rich-toolbar button:focus-visible{outline:2px solid var(--muted);outline-offset:1px}.note-rich-toolbar .note-tool-red{color:#e34242}.note-rich-toolbar .note-tool-green{color:#129966}.note-rich-toolbar .note-tool-yellow{color:#b58a16}
+/* A custom selection fill lets the editor retain each run's text color. */
+.note-rich-editor::selection,.note-rich-editor *::selection{background-color:var(--note-selection)}
+.note-rich-editor:is(.note-text-selection-painted,.note-table-selected)::selection,
+.note-rich-editor:is(.note-text-selection-painted,.note-table-selected) *::selection{background-color:transparent}
+.note-text-selection span{
+ position:fixed;z-index:4;pointer-events:none;
+ background:color-mix(in srgb,var(--type-status) 24%,transparent);
+}
+.note-rich-editor :is(b,strong){font-weight:bolder}
+.note-rich-editor th :is(b,strong){font-weight:800}
+.note-rich-toolbar button[data-tooltip]{position:relative}
+.note-rich-toolbar button[data-tooltip]:is(:hover,:focus-visible)::after{
+ content:attr(data-tooltip);position:absolute;z-index:10;top:calc(100% + 5px);left:50%;
+ transform:translateX(-50%);padding:4px 7px;border:1px solid var(--line);border-radius:5px;
+ background:var(--surface);color:var(--text);font:400 var(--type-caption)/1.4 system-ui;
+ white-space:nowrap;pointer-events:none;
+}
+
+.note-color-default{color:var(--text)}
+.bek-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.bek-tools .note-rich-toolbar{margin:0}
+.bek-document-frame{
+ --note-table-top-gutter:8px;
+ position:relative;isolation:isolate;display:flex;flex-direction:column;
+ flex:1;min-height:0;
+}
+.bek-document-scroll{
+ flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-top:var(--note-table-top-gutter);
+}
+.bek-document-scroll::before{content:"";display:block;height:var(--note-table-top-gutter)}
+/* Keep the mask outside the scrolling layer and overlap its upper clipping edge. */
+.bek-document-frame::after{
+ content:"";position:absolute;inset-inline:0;top:-3px;z-index:4;
+ height:calc(var(--note-table-top-gutter) + 3px);background:var(--surface);pointer-events:none;
+}
+.bek-document{
+ position:relative;display:flex;flex-direction:column;
+ min-height:calc(100% - var(--note-table-top-gutter));padding-inline:35px 31px;
+}
+.note-rich-editor.note-document{
+ --field-bg:transparent;
+ position:relative;
+ flex:1;min-height:0;max-height:none;overflow:visible;
+ border:0;border-radius:0;padding:0;background:transparent;
+ font-size:var(--type-body);line-height:1.65;
+ outline:0;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;
+}
+.note-document :is(p,blockquote){margin-block:0 4px}
+.note-document :is(ul,ol){margin-block:2px 4px;padding-inline-start:1.5em}
+.note-document > :is(ul,ol)[data-note-list-depth]{padding-inline-start:calc(1.5em * (1 + var(--note-list-depth)))}
+.note-document > ul[data-note-list-marker="1"]{list-style-type:circle}
+.note-document > ul[data-note-list-marker="2"]{list-style-type:square}
+.note-document > ol[data-note-list-marker="1"]{list-style-type:lower-alpha}
+.note-document > ol[data-note-list-marker="2"]{list-style-type:lower-roman}
+.note-document > :is(ul,ol) + :is(ul,ol){margin-block-start:0}
+.note-document :is(td,th) li+li{margin-block-start:2px}
+.note-document :is(h2,h3,h4){margin-block:14px 4px;line-height:1.35}
+.note-document > :first-child{margin-block-start:0}
+.note-document > p[data-note-caret-line]{margin-block:0}
+.note-document.bek-thin-caret{caret-color:transparent}
+.bek-caret{
+ position:fixed;z-index:3;width:1px;background:var(--text);pointer-events:none;
+ animation:bek-caret-blink 1s step-end infinite;
+}
+.bek-caret.is-composing{animation:none}
+.bek-document .note-text-selection span{z-index:6}
+@media(prefers-reduced-motion:reduce){.bek-caret{animation:none}}
+.note-rich-editor.note-document::before{content:none}
+.note-rich-editor.note-document[data-empty=true]:not(:has(table))::before{
+ content:attr(data-placeholder);position:absolute;inset-block-start:0;inset-inline-start:0;
+ color:var(--muted);font:inherit;pointer-events:none;
+}
+.note-document table{position:relative;min-width:100%;color:inherit;table-layout:auto;border-collapse:separate;border-spacing:0;margin:12px 0 38px}
+.note-rich-editor.note-document table::after{
+ content:"";position:absolute;left:100%;top:0;width:32px;height:1px;pointer-events:none;
+}
+.note-document table:has(> colgroup[data-note-widths]){min-width:0;table-layout:fixed}
+.note-document table:has(> colgroup[data-note-widths]) :is(th,td){overflow-wrap:anywhere}
+.note-document.note-column-resizing,.note-document.note-column-resizing :is(th,td){cursor:col-resize}
+.note-document :is(th,td){
+ min-width:90px;max-width:32ch;padding:8px 10px;border:solid var(--line);border-width:0 1px 1px 0;
+ text-align:left;vertical-align:middle;white-space:pre-wrap;font:inherit;
+}
+.note-document tr>:is(th,td):first-child{border-left-width:1px}
+.note-document table > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > :is(th,td){border-top-width:1px}
+.note-document th{font-weight:600;background:var(--surface-soft)}
+.note-document table[data-header-row=false] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > th{
+ background:transparent;font-weight:inherit;
+}
+.note-document table[data-header-row=true] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > :is(th,td),
+.note-document table[data-header-column=true] > :is(thead,tbody,tfoot) > tr > :is(th,td):first-child{
+ background:var(--surface-soft);font-weight:600;
+}
+.note-document table[data-header-row=true] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child,
+.note-document table:not([data-header-row]) > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child:has(>th):not(:has(>td)){
+ position:sticky;top:var(--note-table-top-gutter);z-index:5;background:var(--surface-soft);
+}
+.note-document table[data-header-column=true] > :is(thead,tbody,tfoot) > tr > :is(th,td):first-child{
+ position:sticky;left:0;z-index:1;
+}
+.note-table-controls{position:absolute;inset:0;pointer-events:none}
+.note-table-controls .note-table-icon,.note-table-handle,.note-table-outline,.note-block-handle{position:absolute;z-index:5}
+.note-table-controls :is(button,.note-table-menu){pointer-events:auto}
+.note-table-controls [hidden],.note-table-controls[hidden],.note-table-handle[hidden]{display:none}
+.note-table-cell-selected{outline:2px solid var(--type-status);outline-offset:-2px}
+.note-table-outline{
+ box-shadow:inset 0 0 0 2px var(--type-status);
+ background:color-mix(in srgb,var(--type-status) 15%,transparent);pointer-events:none;
+}
+:is(.note-table-controls,.note-document) .note-table-handle{
+ display:grid;place-items:center;padding:0;border:1px solid transparent;border-radius:5px;
+ color:color-mix(in srgb,var(--muted) 70%,transparent);background:transparent;transform:translate(-50%,-50%);
+ cursor:pointer;touch-action:none;z-index:6;
+}
+.note-table-column-handle{width:25px;height:16px}
+.note-table-row-handle{width:16px;height:25px}
+.note-document :is(th,td):where(:has(>.note-table-handle)){position:relative}
+.note-table-row-handle.is-anchored{left:-.5px;top:50%}
+.note-table-column-handle.is-anchored{left:50%;top:-.5px}
+.note-table-handle span{
+ width:12px;height:2px;border-radius:2px;background:currentColor;
+ box-shadow:0 0 0 2px var(--surface);pointer-events:none;
+}
+.note-table-row-handle span{transform:rotate(90deg)}
+.note-table-handle:is(:hover,:focus-visible,[aria-expanded=true]){background:var(--surface-soft);border-color:var(--line)}
+.note-table-handle:is(:hover,:focus-visible,[aria-expanded=true]) span{
+ width:3px;height:3px;box-shadow:-5px 0 currentColor,5px 0 currentColor,0 4px currentColor,-5px 4px currentColor,5px 4px currentColor;
+ translate:0 -2px;
+}
+.note-table-row-handle:is(:hover,:focus-visible,[aria-expanded=true]) span{translate:2px 0}
+.note-table-handle[aria-expanded=true]{background:#2864be;color:white;border-color:#2864be}
+.note-table-handle.can-reorder{cursor:grab}
+.note-table-handle.can-reorder:active{cursor:grabbing;z-index:8}
+.note-document .note-table-drag-source{opacity:.3}
+.note-table-drag-preview{
+ position:fixed;z-index:6;overflow:hidden;pointer-events:none;
+ color:var(--text);font-size:var(--type-body);line-height:1.65;
+}
+.note-table-drag-preview .note-table-drag-copy{
+ position:absolute;min-width:0;margin:0;background:var(--surface);opacity:.55;box-sizing:border-box;
+}
+.note-table-controls.is-moving-table :is(.note-table-outline,.note-table-handle,.note-table-icon){opacity:0}
+.bek-document:has(.note-table-controls.is-moving-table) .note-table-handle.is-anchored{opacity:0}
+:is(.note-table-options>[data-table-action=options],.note-block-handle){cursor:grab;touch-action:none}
+:is(.note-table-options>[data-table-action=options],.note-block-handle):active{cursor:grabbing}
+.bek-document .note-block-handle{
+ display:grid;place-items:center;width:20px;height:24px;padding:0;
+ border:0;border-radius:4px;background:transparent;color:var(--muted);
+}
+.bek-document .note-block-handle:hover{background:var(--surface-hover)}
+.note-block-handle::before{
+ content:"";width:2.5px;height:2.5px;border-radius:50%;background:currentColor;
+ box-shadow:5px 0,0 -5px,5px -5px,0 5px,5px 5px;translate:-2.5px 0;pointer-events:none;
+}
+.bek-document .note-block-handle[hidden]{display:none}
+.note-block-handle.is-moving-block{opacity:0}
+.note-table-drag-cell{
+ position:absolute;overflow:hidden;padding:8px 10px;
+ border:1px solid var(--line);background:var(--surface);
+ white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.note-table-resize-guide{
+ position:fixed;z-index:7;width:2px;background:var(--type-status);pointer-events:none;
+}
+.note-table-icon{
+ display:grid;place-items:center;width:23px;height:23px;padding:0;
+ border:1px solid var(--line);border-radius:6px;background:var(--surface);
+ color:var(--muted);font-size:15px;line-height:1;
+}
+.note-table-icon:hover{background:var(--surface-hover);color:var(--text)}
+.note-table-options>.note-table-icon[aria-expanded=true]{background:var(--surface-hover);color:var(--type-status)}
+.note-table-menu{
+ position:fixed;z-index:8;width:min(224px,calc(100vw - 16px));padding:5px;
+ border:1px solid var(--line);border-radius:8px;background:var(--surface);
+ box-shadow:0 4px 16px #0002;overflow:auto;overscroll-behavior:contain;
+}
+.note-table-menu button{
+ display:block;width:100%;padding:6px 8px;border:0;border-radius:4px;
+ background:transparent;text-align:left;font-size:var(--type-caption);
+}
+.note-table-menu button:is(:hover,[aria-pressed=true]){background:var(--surface-hover)}
+
+}
+@keyframes bek-caret-blink{50%{opacity:0}}
