@@ -2,7 +2,7 @@
 
 ## 浏览器和桌面 WebView
 
-将 `assets/` 中的 `editor.js`、`rich-text.js`、`blocks.js`、`tables.js`、`caret.js` 和 `editor.css` 一起放进目标应用。保持 JavaScript 文件的相对位置。通过应用的开发服务器运行。演示可以用 `python3 -m http.server 8000 --bind 127.0.0.1` 启动，然后打开 `http://127.0.0.1:8000/block-editor-kit/assets/demo.html`，也可以把演示和组件放在同一个目录后用自己的服务器访问。
+将 `assets/` 中的 `editor.js`、`rich-text.js`、`blocks.js`、`tables.js`、`caret.js` 和 `editor.css` 一起放进目标应用。保持 JavaScript 文件的相对位置。通过应用的开发服务器运行。如需单独体验，在 Skill 的 `assets/` 目录运行 `python3 -m http.server 8000 --bind 127.0.0.1`，然后打开 `http://127.0.0.1:8000/demo.html`。
 
 ```html
 <link rel="stylesheet" href="./editor/editor.css">
