@@ -1,6 +1,6 @@
 # Block Editor Kit · 块式富文本编辑器
 
-面向网页和桌面 WebView 的块式编辑器。仓库包含遵循 [Agent Skills 开放规范](https://agentskills.io/specification) 的通用 Skill，以及一套无第三方运行依赖的浏览器组件。
+面向网页和桌面 WebView 的块式编辑器（类似Notion）。仓库包含遵循 [Agent Skills 开放规范](https://agentskills.io/specification) 的通用 Skill，以及一套无第三方运行依赖的浏览器组件。
 
 支持标题、正文、嵌套列表、块内文字格式、拖拽排序、可编辑表格、行列固定和调整列宽。演示包含深浅主题和浏览器本地草稿保存。
 
