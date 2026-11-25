@@ -60,7 +60,7 @@
  flex:1;min-height:0;
 }
 .bek-document-scroll{
- flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scroll-padding-top:var(--note-table-top-gutter);
+ flex:1;min-height:0;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scroll-padding-top:var(--note-table-top-gutter);
 }
 .bek-document-scroll::before{content:"";display:block;height:var(--note-table-top-gutter)}
 /* Keep the mask outside the scrolling layer and overlap its upper clipping edge. */
@@ -70,19 +70,21 @@
 }
 .bek-document{
  position:relative;display:flex;flex-direction:column;
- min-height:calc(100% - var(--note-table-top-gutter));padding-inline:35px 31px;
+ min-width:0;min-height:calc(100% - var(--note-table-top-gutter));
+ padding-inline:clamp(20px,7%,35px) clamp(23px,7%,31px);
 }
 .note-rich-editor.note-document{
  --field-bg:transparent;
+ --bek-body-block-gap:4px;
  position:relative;
  flex:1;min-height:0;max-height:none;overflow:visible;
- border:0;border-radius:0;padding:0;background:transparent;
+ border:0;border-radius:0;padding:0 0 calc(2lh + 2 * var(--bek-body-block-gap));background:transparent;
  font-size:var(--type-body);line-height:1.65;
  outline:0;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;
 }
-.note-document :is(p,blockquote){margin-block:0 4px}
+.note-document :is(p,blockquote){margin-block:0 var(--bek-body-block-gap)}
 .note-document :is(ul,ol){margin-block:2px 4px;padding-inline-start:1.5em}
-.note-document > :is(ul,ol)[data-note-list-depth]{padding-inline-start:calc(1.5em * (1 + var(--note-list-depth)))}
+.note-document > :is(ul,ol)[data-note-list-depth]{padding-inline-start:min(45%,calc(1.5em * (1 + var(--note-list-depth))))}
 .note-document > ul[data-note-list-marker="1"]{list-style-type:circle}
 .note-document > ul[data-note-list-marker="2"]{list-style-type:square}
 .note-document > ol[data-note-list-marker="1"]{list-style-type:lower-alpha}
@@ -105,16 +107,14 @@
  content:attr(data-placeholder);position:absolute;inset-block-start:0;inset-inline-start:0;
  color:var(--muted);font:inherit;pointer-events:none;
 }
-.note-document table{position:relative;min-width:100%;color:inherit;table-layout:auto;border-collapse:separate;border-spacing:0;margin:12px 0 38px}
-.note-rich-editor.note-document table::after{
- content:"";position:absolute;left:100%;top:0;width:32px;height:1px;pointer-events:none;
-}
-.note-document table:has(> colgroup[data-note-widths]){min-width:0;table-layout:fixed}
-.note-document table:has(> colgroup[data-note-widths]) :is(th,td){overflow-wrap:anywhere}
+.note-document table{position:relative;width:100%;max-width:100%;color:inherit;table-layout:auto;border-collapse:separate;border-spacing:0;margin:12px 0 38px}
+.note-document table:has(> colgroup[data-note-widths]){table-layout:fixed}
+.note-document table.bek-table-fit{width:100%!important}
+.note-document table.bek-table-fit col{width:var(--bek-fit-column,auto)!important}
 .note-document.note-column-resizing,.note-document.note-column-resizing :is(th,td){cursor:col-resize}
 .note-document :is(th,td){
- min-width:90px;max-width:32ch;padding:8px 10px;border:solid var(--line);border-width:0 1px 1px 0;
- text-align:left;vertical-align:middle;white-space:pre-wrap;font:inherit;
+ min-width:0;max-width:32ch;padding:8px clamp(2px,1.5vw,10px);border:solid var(--line);border-width:0 1px 1px 0;
+ text-align:left;vertical-align:middle;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;
 }
 .note-document tr>:is(th,td):first-child{border-left-width:1px}
 .note-document table > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > :is(th,td){border-top-width:1px}

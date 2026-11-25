@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><title>Block Editor Kit viewport regression</title>
+<link rel="stylesheet" href="../block-editor-kit/assets/editor.css">
+<style>#fixture{width:310px;--bek-height:260px;font:14px/1.65 system-ui}</style>
+<body><output id="result">RUNNING</output><div id="fixture"></div>
+<script type="module">
+import { mountBlockEditor } from '../block-editor-kit/assets/editor.js';
+const result = document.querySelector('#result');
+const check = (ok, message) => { if (!ok) throw Error(message); };
+const frame = async () => { for (let i=0;i<4;i++) await new Promise(requestAnimationFrame); };
+try {
+  const editor=mountBlockEditor(document.querySelector('#fixture'),{text:Array.from({length:22},(_,i)=>'正文 '+i).join('\n')});
+  const element=editor.element, scroll=element.closest('.bek-document-scroll');
+  function enterAt(p) {
+    element.focus({preventScroll:true});
+    getSelection().collapse(p.firstChild,p.firstChild.length);
+    element.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+  }
+  await frame();
+  enterAt(element.firstElementChild);
+  await frame();
+  check(scroll.scrollTop===0, 'Enter away from the bottom should not scroll');
+  element.focus({preventScroll:true});
+  const last=element.lastElementChild;
+  const padding=parseFloat(getComputedStyle(element).paddingBottom);
+  scroll.scrollTop=last.getBoundingClientRect().bottom-scroll.getBoundingClientRect().bottom+padding+1;
+  await frame();
+  const top=scroll.scrollTop;
+  enterAt(last);
+  await frame();
+  check(scroll.scrollTop>top, 'Enter at the boundary should follow the new block');
+  const child=element.lastElementChild;
+  check(scroll.getBoundingClientRect().bottom-child.getBoundingClientRect().bottom>=padding-2, 'two-line bottom room');
+  const long='https://example.test/'+'abcdef'.repeat(45);
+  editor.setContent({html:'<p>'+long+'</p><table style="width:600px"><colgroup data-note-widths><col style="width:200px"><col style="width:400px"></colgroup><tbody><tr><td>'+long+'</td><td>这是一个较长的表格内容</td></tr></tbody></table>'});
+  await frame();
+  const paragraph=element.querySelector('p'), table=element.querySelector('table');
+  check(paragraph.getBoundingClientRect().height>2*parseFloat(getComputedStyle(paragraph).lineHeight),'long string should wrap within the block');
+  check(scroll.scrollWidth<=scroll.clientWidth+1,'no horizontal scroll range');
+  check(table.getBoundingClientRect().width<=element.clientWidth+1,'table fits the editor');
+  check(editor.getHTML().includes('width: 600px')&&!editor.getHTML().includes('--bek-fit-column'),'fit does not persist visual rule or change stored widths');
+  document.querySelector('#fixture').style.width='800px';
+  await frame();
+  check(!table.classList.contains('bek-table-fit'),'wide layout restores column widths');
+  result.value='PASS';
+} catch(error) { result.value='FAIL: '+error.stack; throw error; }
+</script>
+</body></html>

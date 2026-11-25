@@ -102,7 +102,7 @@
   return {blocks,owners};
  }
 
- export function attachNoteBlocks(editor){
+ export function attachNoteBlocks(editor,onNewBlock){
   const signal=()=>editor.dispatchEvent(new Event('input',{bubbles:true}));
   function blockOf(node){
    let block=elementOf(node);
@@ -253,6 +253,7 @@
    preceding.after(next);
    selection.collapse(lineOf(next),0);
    signal();
+   onNewBlock?.(lineOf(next));
   }
   function join(event,selection,block){
    const line=lineOf(block);

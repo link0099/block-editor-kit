@@ -51,7 +51,7 @@ function clean(html){
  visit(template.content);
  return template.innerHTML;
 }
-export function createRichText(textarea, toolbarHost, listen){
+export function createRichText(textarea, toolbarHost, listen, onNewBlock){
 const editor=document.createElement('div'),toolbar=document.createElement('div');
 editor.id=textarea.id;
 editor.className='note-rich-editor note-document';
@@ -67,7 +67,7 @@ toolbar.setAttribute('aria-label','文字格式');
 toolbarHost.append(toolbar);
 textarea.replaceWith(editor);
 let range;
-const blocks=attachNoteBlocks(editor);
+const blocks=attachNoteBlocks(editor,onNewBlock);
 function updateEmpty(){
  const text=editor.textContent.replace(/[\s\u200b\uFEFF]/g,'');
  editor.dataset.empty=String(!text&&!editor.querySelector('ul,ol,h2,h3,h4,table'));

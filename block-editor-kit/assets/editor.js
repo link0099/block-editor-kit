@@ -1,6 +1,7 @@
 import { createRichText } from './rich-text.js';
 import { attachTableControls } from './tables.js';
 import { attachCaret } from './caret.js';
+import { attachEditorViewport } from './viewport.js';
 import { createEditHistory, captureSelection, restoreSelection } from './history.js';
 
 const template = `
@@ -64,8 +65,9 @@ export function mountBlockEditor(host, {
   const textarea = root.querySelector('textarea');
   textarea.setAttribute('aria-label', label);
   textarea.placeholder = placeholder;
-  const editor = createRichText(textarea, root.querySelector('.bek-tools'), listen);
+  const editor = createRichText(textarea, root.querySelector('.bek-tools'), listen, line => viewport.followNewBlock(line));
   const scrollPort = root.querySelector('.bek-document-scroll');
+  const viewport = attachEditorViewport(editor.element, scrollPort, listen);
   const cancelTableInteraction = attachTableControls(
     editor.element, scrollPort, root.querySelector('.note-table-controls'),
     root.querySelector('.note-text-selection'), listen
@@ -115,6 +117,7 @@ export function mountBlockEditor(host, {
     if (destroyed || activeHistory !== history) return false;
     const next = history.step(redo);
     if (!next) return false;
+    viewport.cancelFollow();
     cancelTableInteraction();
     editor.set('', next.html);
     restoreSelection(element, next.selection);
@@ -183,6 +186,7 @@ export function mountBlockEditor(host, {
       pending = false;
       composing = false;
       beforeSelection = null;
+      viewport.cancelFollow();
       cancelTableInteraction();
       editor.set(text, html);
       history = createEditHistory(editor.html());
@@ -200,6 +204,7 @@ export function mountBlockEditor(host, {
       pending = false;
       cancelTableInteraction();
       stopCaret();
+      viewport.destroy();
       lifetime.abort();
       root.remove();
     }
