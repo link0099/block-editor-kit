@@ -42,6 +42,31 @@ try {
   document.querySelector('#fixture').style.width='800px';
   await frame();
   check(!table.classList.contains('bek-table-fit'),'wide layout restores column widths');
+  document.querySelector('#fixture').style.width='310px';
+  editor.setContent({text:long+'\n第二个块\n'+Array.from({length:24},()=> '用于滚动的正文。').join('\n')});
+  scroll.scrollTop=0;
+  await frame();
+  const first=element.firstElementChild, second=first.nextElementSibling, handle=scroll.querySelector('.note-block-handle');
+  const range=document.createRange();
+  range.selectNodeContents(first);
+  const lines=[...range.getClientRects()];
+  const step=lines[1].top-lines[0].top;
+  const blockStep=second.getBoundingClientRect().top-(first.getBoundingClientRect().bottom-step);
+  check(blockStep>step+4, 'standalone block separation exceeds soft-wrap spacing');
+  function hoverLine(rect) {
+    first.dispatchEvent(new PointerEvent('pointermove',{clientX:rect.left+4,clientY:(rect.top+rect.bottom)/2,bubbles:true}));
+  }
+  hoverLine(lines[0]);
+  check(!handle.hidden, 'first line has the block handle');
+  const handleTop=handle.getBoundingClientRect().top;
+  hoverLine(lines[1]);
+  check(!handle.hidden && Math.abs(handle.getBoundingClientRect().top-handleTop)<1, 'wrapped line keeps the same first-line handle');
+  check(scroll.querySelectorAll('.note-block-handle').length===1, 'one shared handle');
+  scroll.scrollTop=step+2;
+  await frame();
+  hoverLine(first.getBoundingClientRect().top<lines[0].top-step/2
+    ? (range.getClientRects()[2]) : range.getClientRects()[1]);
+  check(handle.hidden, 'do not move the handle down when first line is clipped');
   result.value='PASS';
 } catch(error) { result.value='FAIL: '+error.stack; throw error; }
 </script>

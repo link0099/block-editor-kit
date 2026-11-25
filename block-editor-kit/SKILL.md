@@ -1,9 +1,9 @@
 ---
 name: block-editor-kit
-description: Build, port, style, or review block-based rich-text editors (块式富文本、内容块、可编辑表格). Use when implementing paragraph and heading blocks, nested lists, inline formatting, drag handles, editable tables, undo/redo, or keyboard, caret, and selection behavior in web or desktop WebView apps. Includes a portable browser implementation and integration example.
+description: Build, port, style, or review block-based rich-text editors (块式富文本、内容块、可编辑表格). Use when implementing paragraph and heading blocks, nested lists, inline formatting, first-line block handles, editable tables, undo/redo, or keyboard, caret, and selection behavior in web or desktop WebView apps. Includes a portable browser implementation and integration example.
 license: MIT
 metadata:
-  version: "0.2.1"
+  version: "0.2.2"
 ---
 
 # Block Editor Kit

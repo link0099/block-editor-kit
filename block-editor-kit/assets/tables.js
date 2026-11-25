@@ -186,7 +186,7 @@
   const buttons=new Map([...menu.querySelectorAll('[data-table-action]')].map(button=>[button.dataset.tableAction,button]));
   let cell,table,hoverCell,menuAnchor,pendingDelete,drag,reorder,ignoreHandleClick;
   let textDrag,selectionFrame,tableDrag,ignoreOptionsClick;
-  let outlinedCell=null, hoveredBlock=null, hoveredText=null, pointer;
+  let outlinedCell=null, hoveredBlock=null, hoveredFirstLine=null, pointer;
 
   function placeHandleInHeader(handle,target){
    const parent=target||controls;
@@ -217,7 +217,7 @@
 
   function hideBlockHandle(){
    hoveredBlock=null;
-   hoveredText=null;
+   hoveredFirstLine=null;
    blockHandle.hidden=true;
   }
 
@@ -244,26 +244,34 @@
     hideBlockHandle();
     return;
    }
+   if(event.target===blockHandle)return;
    let block=event.target;
    while(block&&block.parentElement!==editor)block=block.parentElement;
-   const text=block&&!block.matches('table')?textAtPointer(block,x,y):null;
-   if(!text){
-    // Keep the handle reachable through the gap after hovering over the text.
-    if(hoveredText){
+   const hit=block&&!block.matches('table')&&textAtPointer(block,x,y);
+   if(!hit){
+    // Keep the handle reachable through the gutter next to the first line.
+    if(hoveredFirstLine){
      const handle=blockHandle.getBoundingClientRect();
-     if(x>=handle.left&&x<hoveredText.left&&y>=Math.min(handle.top,hoveredText.top)&&
-      y<Math.max(handle.bottom,hoveredText.bottom))return;
+     if(x>=handle.left&&x<hoveredFirstLine.left&&y>=Math.min(handle.top,hoveredFirstLine.top)&&
+      y<Math.max(handle.bottom,hoveredFirstLine.bottom))return;
     }
     hideBlockHandle();
     return;
    }
+   const line=block.matches('ul,ol')?block.firstElementChild:block;
+   const rect=line.getBoundingClientRect();
+   const lineHeight=parseFloat(getComputedStyle(line).lineHeight)||rect.height;
+   const firstLine={left:rect.left,top:rect.top,bottom:rect.top+lineHeight};
+   // A clipped first line must not make the handle jump to a continuation line.
+   if(firstLine.top<clipTop-.5||firstLine.bottom>viewport.bottom+.5){
+    hideBlockHandle();
+    return;
+   }
    blockHandle.hidden=false;
-   const right=editor.getBoundingClientRect().left-8;
-   const left=right-blockHandle.offsetWidth;
-   const height=blockHandle.offsetHeight;
-   const top=Math.max(clipTop,Math.min(viewport.bottom-height,(text.top+text.bottom-height)/2));
+   const left=editor.getBoundingClientRect().left-8-blockHandle.offsetWidth;
+   const top=(firstLine.top+firstLine.bottom-blockHandle.offsetHeight)/2;
    const origin=blockHandle.offsetParent;
-   if(!origin||left<viewport.left||clipTop+height>viewport.bottom){
+   if(!origin||left<viewport.left||clipTop+blockHandle.offsetHeight>viewport.bottom){
     hideBlockHandle();
     return;
    }
@@ -271,7 +279,7 @@
    blockHandle.style.left=left-bounds.left+'px';
    blockHandle.style.top=top-bounds.top+'px';
    hoveredBlock=block;
-   hoveredText=text;
+   hoveredFirstLine=firstLine;
   }
 
   listen(scrollPort,'pointermove',moveBlockHandle);
