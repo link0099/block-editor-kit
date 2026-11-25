@@ -2,7 +2,9 @@
 
 面向网页和桌面 WebView 的块式编辑器（类似Notion）。仓库包含遵循 [Agent Skills 开放规范](https://agentskills.io/specification) 的通用 Skill，以及一套无第三方运行依赖的浏览器组件。
 
-支持标题、正文、嵌套列表、块内文字格式、拖拽排序、可编辑表格、行列固定和调整列宽。演示包含深浅主题和浏览器本地草稿保存。
+支持标题、正文、嵌套列表、块内文字格式、拖拽排序、可编辑表格、行列固定和调整列宽，以及最近 100 次操作的撤销与重做（仅当前编辑会话）。演示包含深浅主题和浏览器本地草稿保存。
+
+当前版本：0.2.0。
 
 ## 先试用
 
@@ -36,6 +38,10 @@ python3 -m http.server 8000 --bind 127.0.0.1
 ## 在应用中直接使用组件
 
 把 [assets](block-editor-kit/assets/) 中的 JavaScript 模块和 `editor.css` 放进项目，使用 `mountBlockEditor(host, options)` 挂载，接入应用已有的主题与保存流程。详见[接入指南](block-editor-kit/references/integration.md)。
+
+## 开发验收
+
+运行 `node --test tests/history.test.mjs` 检查 100 步边界和历史分支。启动本地服务器后，打开 [历史回归页](http://127.0.0.1:8000/tests/editor-history.html)，检查快捷键、按钮、编辑事务和切换文档，预期显示 `PASS`。
 
 ## License
 

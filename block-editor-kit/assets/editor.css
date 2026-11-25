@@ -32,6 +32,7 @@
  .note-color-green{color:var(--bek-green,#129966)!important}
  .note-color-yellow{color:var(--bek-yellow,#b58a16)!important}
 .note-rich-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.note-rich-toolbar button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--muted)}.note-rich-toolbar button:hover{background:var(--surface-hover);color:var(--text)}.note-rich-toolbar button:focus-visible{outline:2px solid var(--muted);outline-offset:1px}.note-rich-toolbar .note-tool-red{color:#e34242}.note-rich-toolbar .note-tool-green{color:#129966}.note-rich-toolbar .note-tool-yellow{color:#b58a16}
+.note-rich-toolbar button:disabled{opacity:.4;cursor:default;background:transparent;color:var(--muted)}
 /* A custom selection fill lets the editor retain each run's text color. */
 .note-rich-editor::selection,.note-rich-editor *::selection{background-color:var(--note-selection)}
 .note-rich-editor:is(.note-text-selection-painted,.note-table-selected)::selection,

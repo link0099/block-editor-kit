@@ -1,0 +1,73 @@
+import { mountBlockEditor } from '../block-editor-kit/assets/editor.js';
+
+export async function runHistoryChecks(document) {
+  const host = document.createElement('div');
+  document.body.append(host);
+  const callbacks = [];
+  const editor = mountBlockEditor(host, {text:'abc',onChange:html=>callbacks.push(html)});
+  const el = editor.element;
+  const button = name=>host.querySelector('[data-history-'+name+']');
+  const check = (value, caption) => { if (!value) throw new Error(caption); };
+  const flush = () => new Promise(resolve=>queueMicrotask(resolve));
+  const key = (key, mods={}) => el.dispatchEvent(new KeyboardEvent('keydown', {key,...mods,bubbles:true,cancelable:true}));
+  const input = (type='insertText', composing=false) => el.dispatchEvent(new InputEvent('input',{inputType:type,bubbles:true,isComposing:composing}));
+  const bindCaret = (offset=0) => { el.focus();document.getSelection().collapse(el.querySelector('p').firstChild,offset); };
+  const replace = async value => {
+    el.dispatchEvent(new InputEvent('beforeinput',{inputType:'insertText',bubbles:true,cancelable:true}));
+    el.querySelector('p').firstChild.data=value;
+    bindCaret(1);
+    input();
+    await flush();
+  };
+  try {
+    check(button('undo').disabled && button('redo').disabled, 'initial empty history');
+    bindCaret(2);
+    await replace('aZbc');
+    check(!button('undo').disabled && button('redo').disabled, 'button states after edit');
+    check(!key('z',{ctrlKey:true}) && editor.getText()==='abc', 'Ctrl+Z');
+    check(document.getSelection().anchorOffset===2, 'undo restores original caret');
+    check(!key('y',{ctrlKey:true}) && editor.getText()==='aZbc', 'Ctrl+Y');
+    check(document.getSelection().anchorOffset===1, 'redo restores post-edit caret');
+    check(!key('z',{metaKey:true}) && editor.getText()==='abc', 'Command+Z');
+    check(!key('z',{metaKey:true,shiftKey:true}) && editor.getText()==='aZbc', 'Command+Shift+Z');
+    button('undo').click();
+    check(editor.getText()==='abc' && !button('redo').disabled, 'undo button');
+    check(!key('z',{ctrlKey:true,shiftKey:true}) && editor.getText()==='aZbc', 'Ctrl+Shift+Z');
+    button('undo').click();
+    input();
+    await flush();
+    check(editor.canRedo(), 'no-op does not empty redo');
+    await replace('new');
+    check(!editor.canRedo(), 'branch invalidated by new content');
+    const startComposition = new CompositionEvent('compositionstart',{bubbles:true});
+    el.dispatchEvent(startComposition);
+    const previousCalls=callbacks.length;
+    el.querySelector('p').firstChild.data='n';
+    input('insertCompositionText',true);
+    check(key('z',{ctrlKey:true,isComposing:true}) && !editor.undo(), 'composition is not interrupted');
+    await flush();
+    check(callbacks.length===previousCalls,'no interim composition save');
+    el.querySelector('p').firstChild.data='中文';
+    el.dispatchEvent(new CompositionEvent('compositionend',{bubbles:true,data:'中文'}));
+    input();
+    await flush();
+    check(callbacks.length===previousCalls+1 && editor.undo() && editor.getText()==='new', 'one step for composition');
+    el.dispatchEvent(new InputEvent('beforeinput',{inputType:'historyRedo',bubbles:true,cancelable:true}));
+    check(editor.getText()==='中文','native menu event routes to managed redo');
+    host.querySelector('[data-insert-table]').click();
+    await flush();
+    check(el.querySelectorAll('td').length===6,'insert table');
+    check(editor.undo() && !el.querySelector('table'),'undo table');
+    button('redo').click();
+    check(el.querySelectorAll('td').length===6,'redo button restores table');
+    const calls=callbacks.length;
+    editor.setContent({text:'another'});
+    check(callbacks.length===calls && editor.getText()==='another' && !editor.canUndo() && !editor.canRedo(),'loading a different document resets history without saving');
+    const outside = document.createElement('input');
+    document.body.append(outside);
+    const native = outside.dispatchEvent(new KeyboardEvent('keydown',{key:'z',ctrlKey:true,cancelable:true,bubbles:true}));
+    outside.remove();
+    check(native,'outside shortcut not intercepted');
+    return 'PASS';
+  } finally { editor.destroy(); host.remove(); }
+}
