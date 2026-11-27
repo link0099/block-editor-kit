@@ -4,11 +4,11 @@
 
 A lightweight Notion-style block editor for web and desktop WebViews, with an optional Agent Skill for assisted integration.
 
-**[试用 Demo（下载单文件，无需安装）](docs/index.html)** · **[接入项目 / Integration](block-editor-kit/references/integration.md)**
+**[在线试用 / Live Demo](https://link0099.github.io/block-editor-kit/)** · **[接入项目 / Integration](block-editor-kit/references/integration.md)**
 
 ![块编辑器动图：选中文字，粘贴到原行；选中整块，粘贴为新的编号项。](docs/clipboard-demo.svg)
 
-Demo 预览版 0.2.3：在 Demo 文件页点击下载按钮，双击 HTML 即可试用。仓库可集成源码版本：0.2.2。
+在线 Demo 为 0.2.3 预览版，无需安装或登录。也可[下载离线 HTML](docs/index.html)，在文件页点击下载后双击打开。仓库可集成源码版本：0.2.2。
 
 ## 本地运行源码示例
 
