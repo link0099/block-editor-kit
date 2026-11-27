@@ -1,12 +1,16 @@
 # Block Editor Kit · 块式富文本编辑器
 
-面向网页和桌面 WebView 的块式编辑器（类似Notion）。仓库包含遵循 [Agent Skills 开放规范](https://agentskills.io/specification) 的通用 Skill，以及一套无第三方运行依赖的浏览器组件。
+给网页和桌面应用接入 Notion 式编辑器，无需从零实现块拖拽、富文本、表格和撤销重做。组件使用原生 JavaScript 和 CSS，没有第三方运行依赖；也可通过配套的 [Agent Skill](#在智能体中安装-skill) 让 AI 辅助接入。
 
-支持标题、正文、嵌套列表、块内文字格式、拖拽排序、可编辑表格、行列固定和调整列宽，以及最近 100 次操作的撤销与重做（仅当前编辑会话）。演示包含深浅主题和浏览器本地草稿保存。
+A lightweight Notion-style block editor for web and desktop WebViews, with an optional Agent Skill for assisted integration.
 
-当前版本：0.2.2
+**[试用 Demo（下载单文件，无需安装）](docs/index.html)** · **[接入项目 / Integration](block-editor-kit/references/integration.md)**
 
-## 先试用
+![块编辑器动图：选中文字，粘贴到原行；选中整块，粘贴为新的编号项。](docs/clipboard-demo.svg)
+
+Demo 预览版 0.2.3：在 Demo 文件页点击下载按钮，双击 HTML 即可试用。仓库可集成源码版本：0.2.2。
+
+## 本地运行源码示例
 
 下载并解压仓库，在包含本 README 的目录运行以下命令。
 

@@ -1,0 +1,2444 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Block Editor Kit · 在线试用</title>
+  <meta name="description" content="免安装试用 Notion 式块编辑器：对比文字复制和整块复制，体验拖拽、表格和撤销。">
+  <style>/* Theme tokens inherit from the surrounding application. */
+.block-editor-kit {
+ --surface:var(--bek-surface,#fff);
+ --surface-soft:var(--bek-soft,#f4f6f8);
+ --surface-hover:var(--bek-hover,#edf2f7);
+ --text:var(--bek-text,#232a34);
+ --muted:var(--bek-muted,#627084);
+ --line:var(--bek-line,#d9e0e7);
+ --type-status:var(--bek-accent,#2864be);
+ --type-body:var(--bek-font-size,14px);
+ --type-caption:12px;
+ --note-selection:var(--bek-selection,#c9dff5);
+ display:flex;flex-direction:column;min-width:0;
+ height:var(--bek-height,24rem);background:var(--surface);color:var(--text);
+ font-family:inherit;
+}
+[data-theme=dark] .block-editor-kit,.block-editor-kit[data-theme=dark] {
+ --surface:var(--bek-surface,#1b2029);
+ --surface-soft:var(--bek-soft,#262e3a);
+ --surface-hover:var(--bek-hover,#2d394a);
+ --text:var(--bek-text,#e9edf5);
+ --muted:var(--bek-muted,#a0aec0);
+ --line:var(--bek-line,#394658);
+ --type-status:var(--bek-accent,#8db9ff);
+ --note-selection:var(--bek-selection,#30465f);
+}
+@scope (.block-editor-kit) {
+ *, *::before, *::after {box-sizing:border-box}
+ button {font:inherit;color:inherit}
+ .bek-tools {padding-inline:12px;position:relative;z-index:9}
+ .note-color-red{color:var(--bek-red,#e34242)!important}
+ .note-color-green{color:var(--bek-green,#129966)!important}
+ .note-color-yellow{color:var(--bek-yellow,#b58a16)!important}
+.note-rich-toolbar{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}.note-rich-toolbar button{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;min-width:26px;min-height:26px;padding:0;border:0;border-radius:5px;background:transparent;color:var(--muted)}.note-rich-toolbar button:hover{background:var(--surface-hover);color:var(--text)}.note-rich-toolbar button:focus-visible{outline:2px solid var(--muted);outline-offset:1px}.note-rich-toolbar .note-tool-red{color:#e34242}.note-rich-toolbar .note-tool-green{color:#129966}.note-rich-toolbar .note-tool-yellow{color:#b58a16}
+.note-rich-toolbar button:disabled{opacity:.4;cursor:default;background:transparent;color:var(--muted)}
+/* A custom selection fill lets the editor retain each run's text color. */
+.note-rich-editor::selection,.note-rich-editor *::selection{background-color:var(--note-selection)}
+.note-rich-editor:is(.note-text-selection-painted,.note-table-selected,.bek-has-block-selection)::selection,
+.note-rich-editor:is(.note-text-selection-painted,.note-table-selected,.bek-has-block-selection) *::selection{background-color:transparent}
+.note-document > .bek-block-selected{background:var(--note-selection);border-radius:4px;outline:2px solid var(--note-selection)}
+.note-text-selection span{
+ position:fixed;z-index:4;pointer-events:none;
+ background:color-mix(in srgb,var(--type-status) 24%,transparent);
+}
+.note-rich-editor :is(b,strong){font-weight:bolder}
+.note-rich-editor th :is(b,strong){font-weight:800}
+.note-rich-toolbar button[data-tooltip]{position:relative}
+.note-rich-toolbar button[data-tooltip]:is(:hover,:focus-visible)::after{
+ content:attr(data-tooltip);position:absolute;z-index:10;top:calc(100% + 5px);left:50%;
+ transform:translateX(-50%);padding:4px 7px;border:1px solid var(--line);border-radius:5px;
+ background:var(--surface);color:var(--text);font:400 var(--type-caption)/1.4 system-ui;
+ white-space:nowrap;pointer-events:none;
+}
+
+.note-color-default{color:var(--text)}
+.bek-tools{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.bek-tools .note-rich-toolbar{margin:0}
+.bek-document-frame{
+ --note-table-top-gutter:8px;
+ position:relative;isolation:isolate;display:flex;flex-direction:column;
+ flex:1;min-height:0;
+}
+.bek-document-scroll{
+ flex:1;min-height:0;min-width:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scroll-padding-top:var(--note-table-top-gutter);
+}
+.bek-document-scroll::before{content:"";display:block;height:var(--note-table-top-gutter)}
+/* Keep the mask outside the scrolling layer and overlap its upper clipping edge. */
+.bek-document-frame::after{
+ content:"";position:absolute;inset-inline:0;top:-3px;z-index:4;
+ height:calc(var(--note-table-top-gutter) + 3px);background:var(--surface);pointer-events:none;
+}
+.bek-document{
+ position:relative;display:flex;flex-direction:column;
+ min-width:0;min-height:calc(100% - var(--note-table-top-gutter));
+ padding-inline:clamp(30px,7%,35px) clamp(23px,7%,31px);
+}
+.note-rich-editor.note-document{
+ --field-bg:transparent;
+ --bek-body-block-gap:8px;
+ position:relative;
+ flex:1;min-height:0;max-height:none;overflow:visible;
+ border:0;border-radius:0;padding:0 0 calc(2lh + 2 * var(--bek-body-block-gap));background:transparent;
+ font-size:var(--type-body);line-height:1.45;
+ outline:0;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text;
+}
+.note-document :is(p,blockquote){margin-block:0 var(--bek-body-block-gap)}
+.note-document :is(ul,ol){margin-block:2px 6px;padding-inline-start:1.5em}
+.note-document > :is(ul,ol)[data-note-list-depth]{padding-inline-start:min(45%,calc(1.5em * (1 + var(--note-list-depth))))}
+.note-document > ul[data-note-list-marker="1"]{list-style-type:circle}
+.note-document > ul[data-note-list-marker="2"]{list-style-type:square}
+.note-document > ol[data-note-list-marker="1"]{list-style-type:lower-alpha}
+.note-document > ol[data-note-list-marker="2"]{list-style-type:lower-roman}
+.note-document > :is(ul,ol) + :is(ul,ol){margin-block-start:0}
+.note-document :is(td,th) li+li{margin-block-start:2px}
+.note-document :is(h2,h3,h4){margin-block:14px 4px;line-height:1.35}
+.note-document > :first-child{margin-block-start:0}
+.note-document > p[data-note-caret-line]{margin-block:0}
+.note-document.bek-thin-caret{caret-color:transparent}
+.bek-caret{
+ position:fixed;z-index:3;width:1px;background:var(--text);pointer-events:none;
+ animation:bek-caret-blink 1s step-end infinite;
+}
+.bek-caret.is-composing{animation:none}
+.bek-document .note-text-selection span{z-index:6}
+@media(prefers-reduced-motion:reduce){.bek-caret{animation:none}}
+.note-rich-editor.note-document::before{content:none}
+.note-rich-editor.note-document[data-empty=true]:not(:has(table))::before{
+ content:attr(data-placeholder);position:absolute;inset-block-start:0;inset-inline-start:0;
+ color:var(--muted);font:inherit;pointer-events:none;
+}
+.note-document table{position:relative;width:100%;max-width:100%;color:inherit;table-layout:auto;border-collapse:separate;border-spacing:0;margin:12px 0 38px}
+.note-document table:has(> colgroup[data-note-widths]){table-layout:fixed}
+.note-document table.bek-table-fit{width:100%!important}
+.note-document table.bek-table-fit col{width:var(--bek-fit-column,auto)!important}
+.note-document.note-column-resizing,.note-document.note-column-resizing :is(th,td){cursor:col-resize}
+.note-document :is(th,td){
+ min-width:0;max-width:32ch;padding:8px clamp(2px,1.5vw,10px);border:solid var(--line);border-width:0 1px 1px 0;
+ text-align:left;vertical-align:middle;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;
+}
+.note-document tr>:is(th,td):first-child{border-left-width:1px}
+.note-document table > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > :is(th,td){border-top-width:1px}
+.note-document th{font-weight:600;background:var(--surface-soft)}
+.note-document table[data-header-row=false] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > th{
+ background:transparent;font-weight:inherit;
+}
+.note-document table[data-header-row=true] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child > :is(th,td),
+.note-document table[data-header-column=true] > :is(thead,tbody,tfoot) > tr > :is(th,td):first-child{
+ background:var(--surface-soft);font-weight:600;
+}
+.note-document table[data-header-row=true] > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child,
+.note-document table:not([data-header-row]) > :is(thead,tbody):nth-child(1 of thead,tbody) > tr:first-child:has(>th):not(:has(>td)){
+ position:sticky;top:var(--note-table-top-gutter);z-index:5;background:var(--surface-soft);
+}
+.note-document table[data-header-column=true] > :is(thead,tbody,tfoot) > tr > :is(th,td):first-child{
+ position:sticky;left:0;z-index:1;
+}
+.note-table-controls{position:absolute;inset:0;pointer-events:none}
+.note-table-controls .note-table-icon,.note-table-handle,.note-table-outline,.note-block-handle{position:absolute;z-index:5}
+.note-table-controls :is(button,.note-table-menu){pointer-events:auto}
+.note-table-controls [hidden],.note-table-controls[hidden],.note-table-handle[hidden]{display:none}
+.note-table-cell-selected{outline:2px solid var(--type-status);outline-offset:-2px}
+.note-table-outline{
+ box-shadow:inset 0 0 0 2px var(--type-status);
+ background:color-mix(in srgb,var(--type-status) 15%,transparent);pointer-events:none;
+}
+:is(.note-table-controls,.note-document) .note-table-handle{
+ display:grid;place-items:center;padding:0;border:1px solid transparent;border-radius:5px;
+ color:color-mix(in srgb,var(--muted) 70%,transparent);background:transparent;transform:translate(-50%,-50%);
+ cursor:pointer;touch-action:none;z-index:6;
+}
+.note-table-column-handle{width:25px;height:16px}
+.note-table-row-handle{width:16px;height:25px}
+.note-document :is(th,td):where(:has(>.note-table-handle)){position:relative}
+.note-table-row-handle.is-anchored{left:-.5px;top:50%}
+.note-table-column-handle.is-anchored{left:50%;top:-.5px}
+.note-table-handle span{
+ width:12px;height:2px;border-radius:2px;background:currentColor;
+ box-shadow:0 0 0 2px var(--surface);pointer-events:none;
+}
+.note-table-row-handle span{transform:rotate(90deg)}
+.note-table-handle:is(:hover,:focus-visible,[aria-expanded=true]){background:var(--surface-soft);border-color:var(--line)}
+.note-table-handle:is(:hover,:focus-visible,[aria-expanded=true]) span{
+ width:3px;height:3px;box-shadow:-5px 0 currentColor,5px 0 currentColor,0 4px currentColor,-5px 4px currentColor,5px 4px currentColor;
+ translate:0 -2px;
+}
+.note-table-row-handle:is(:hover,:focus-visible,[aria-expanded=true]) span{translate:2px 0}
+.note-table-handle[aria-expanded=true]{background:#2864be;color:white;border-color:#2864be}
+.note-table-handle.can-reorder{cursor:grab}
+.note-table-handle.can-reorder:active{cursor:grabbing;z-index:8}
+.note-document .note-table-drag-source{opacity:.3}
+.note-table-drag-preview{
+ position:fixed;z-index:6;overflow:hidden;pointer-events:none;
+ color:var(--text);font-size:var(--type-body);line-height:1.65;
+}
+.note-table-drag-preview .note-table-drag-copy{
+ position:absolute;min-width:0;margin:0;background:var(--surface);opacity:.55;box-sizing:border-box;
+}
+.note-table-controls.is-moving-table :is(.note-table-outline,.note-table-handle,.note-table-icon){opacity:0}
+.bek-document:has(.note-table-controls.is-moving-table) .note-table-handle.is-anchored{opacity:0}
+:is(.note-table-options>[data-table-action=options],.note-block-handle){cursor:grab;touch-action:none}
+:is(.note-table-options>[data-table-action=options],.note-block-handle):active{cursor:grabbing}
+.bek-document .note-block-handle{
+ display:grid;place-items:center;width:20px;height:24px;padding:0;
+ border:0;border-radius:4px;background:transparent;color:var(--muted);
+}
+.bek-document .note-block-handle:hover{background:var(--surface-hover)}
+.note-block-handle::before{
+ content:"";width:2.5px;height:2.5px;border-radius:50%;background:currentColor;
+ box-shadow:5px 0,0 -5px,5px -5px,0 5px,5px 5px;translate:-2.5px 0;pointer-events:none;
+}
+.bek-document .note-block-handle[hidden]{display:none}
+.note-block-handle.is-moving-block{opacity:0}
+.note-table-drag-cell{
+ position:absolute;overflow:hidden;padding:8px 10px;
+ border:1px solid var(--line);background:var(--surface);
+ white-space:pre-wrap;overflow-wrap:anywhere;
+}
+.note-table-resize-guide{
+ position:fixed;z-index:7;width:2px;background:var(--type-status);pointer-events:none;
+}
+.note-table-icon{
+ display:grid;place-items:center;width:23px;height:23px;padding:0;
+ border:1px solid var(--line);border-radius:6px;background:var(--surface);
+ color:var(--muted);font-size:15px;line-height:1;
+}
+.note-table-icon:hover{background:var(--surface-hover);color:var(--text)}
+.note-table-options>.note-table-icon[aria-expanded=true]{background:var(--surface-hover);color:var(--type-status)}
+.note-table-menu{
+ position:fixed;z-index:8;width:min(224px,calc(100vw - 16px));padding:5px;
+ border:1px solid var(--line);border-radius:8px;background:var(--surface);
+ box-shadow:0 4px 16px #0002;overflow:auto;overscroll-behavior:contain;
+}
+.note-table-menu button{
+ display:block;width:100%;padding:6px 8px;border:0;border-radius:4px;
+ background:transparent;text-align:left;font-size:var(--type-caption);
+}
+.note-table-menu button:is(:hover,[aria-pressed=true]){background:var(--surface-hover)}
+
+}
+@keyframes bek-caret-blink{50%{opacity:0}}
+</style>
+  <style>
+    html { color-scheme: light; background: #f4f6f8; color: #232a34; font: 15px system-ui, sans-serif; }
+    html[data-theme=dark] { color-scheme: dark; background: #141820; color: #e9edf5; }
+    body { max-width: 860px; margin: 40px auto; padding: 0 20px; }
+    header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    h1 { margin: 0; font-size: 22px; }
+    output { display: block; margin: 8px 0 16px; font-size: 12px; }
+    button { font: inherit; }
+    #editor { --bek-height: clamp(300px, 68vh, 680px); }
+  </style>
+  <style>
+    html {background:#eff4f9} html[data-theme=dark]{background:#141820}
+    body {max-width:980px;margin:30px auto;padding:0 16px}
+    .demo-header {align-items:flex-start;gap:16px;flex-wrap:wrap}
+    .demo-kicker {margin:0 0 7px;color:#375c9c;font-size:12px;font-weight:700;letter-spacing:.08em}
+    [data-theme=dark] .demo-kicker {color:#a7c6ff}
+    .demo-header h1 {font-size:clamp(25px,5vw,36px);line-height:1.12}
+    .demo-header p:last-child {margin:8px 0 0;max-width:42rem}
+    .demo-actions {display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .demo-actions > * {box-sizing:border-box;display:inline-block;padding:6px 10px;border:1px solid currentColor;border-radius:7px;color:inherit;background:transparent;font:inherit;cursor:pointer;text-decoration:none}
+    .demo-actions > *:focus-visible,.demo-steps:focus-visible {outline:3px solid #7394d7;outline-offset:2px}
+    .demo-steps {display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:16px}
+    .demo-steps p {margin:0;padding:10px 12px;border:1px solid #91a6c75e;border-radius:9px;line-height:1.42}
+    #editor {--bek-height:clamp(340px,58vh,610px)}
+    #status {margin-bottom:9px}
+    @media(max-width:560px){body{margin-top:18px}.demo-steps{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header class="demo-header">
+    <div><p class="demo-kicker">INTERACTIVE DEMO · 0.2.3 PREVIEW</p><h1>Block Editor Kit</h1>
+      <p>不用下载安装。直接试用 Notion 式块编辑器，体验文本与整块的不同复制方式。</p></div>
+    <nav class="demo-actions" aria-label="演示操作">
+      <a href="https://github.com/link0099/block-editor-kit">GitHub 源码</a>
+      <button id="theme" type="button" aria-pressed="false">深色模式</button>
+      <button id="reset" type="button">恢复示例</button>
+    </nav>
+  </header>
+  <section class="demo-steps" aria-label="30 秒试用">
+    <p><strong>01 · 只复制文字</strong><br>三击「测试」，复制后粘贴到末尾，得到一行「测试测试」。</p>
+    <p><strong>02 · 复制整块</strong><br>点「测试」左侧六点，复制；按 Esc 后把光标放回行末再粘贴，新增一个编号项。</p>
+  </section>
+  <output id="status" aria-live="polite">编辑仅保存在当前浏览器</output>
+  <div id="editor"></div>
+  <script>(() => {
+  // block-editor-kit/assets/blocks.js
+  var headings = "h2,h3,h4";
+  var lists = "ul,ol";
+  var structural = "p,div,blockquote,h1,h2,h3,h4,h5,h6,ul,ol,li,table";
+  var editableBlock = "p,h2,h3,h4";
+  var elementOf = (node) => node?.nodeType === Node.TEXT_NODE ? node.parentElement : node;
+  var isElement = (node) => node.nodeType === Node.ELEMENT_NODE;
+  var lineOf = (block) => block?.matches(lists) ? block.firstElementChild : block;
+  var listDepth = (block) => Number(block.dataset.noteListDepth) || 0;
+  function setListDepth(block, depth) {
+    if (depth) block.dataset.noteListDepth = String(depth);
+    else delete block.dataset.noteListDepth;
+  }
+  function fillLine(line) {
+    if (!line.textContent && !line.querySelector("br")) line.append(document.createElement("br"));
+  }
+  function createBlock(tag, children = [], start = null) {
+    const block = document.createElement(tag);
+    if (tag === "ol" && start !== null) block.setAttribute("start", start);
+    if (block.matches(lists)) block.append(document.createElement("li"));
+    const line = lineOf(block);
+    line.append(...children);
+    fillLine(line);
+    return block;
+  }
+  function removePlaceholder(line) {
+    if (!line.textContent && line.querySelectorAll("br").length === 1) line.querySelector("br").remove();
+  }
+  function caretLine() {
+    const line = createBlock("p");
+    line.dataset.noteCaretLine = "";
+    return line;
+  }
+  function flatten(root) {
+    const blocks = [], owners = /* @__PURE__ */ new Map();
+    function appendContainer(container, tag, emit, keepEmpty = false, depth = 0) {
+      let inline = [], produced = false;
+      function flush() {
+        if (!inline.length) return;
+        const wrapper = container.matches?.("p,div,li,blockquote,h1,h2,h3,h4,h5,h6") && (container.style.color || container.style.fontWeight || container.className.startsWith("note-color-"));
+        if (wrapper) {
+          const span = document.createElement("span");
+          span.style.color = container.style.color;
+          span.style.fontWeight = container.style.fontWeight;
+          span.className = container.className;
+          span.append(...inline);
+          inline = [span];
+        }
+        const block = emit(tag, inline);
+        if (!owners.has(container)) owners.set(container, lineOf(block));
+        inline = [];
+        produced = true;
+      }
+      for (const node of [...container.childNodes]) {
+        if (isElement(node) && node.matches(structural)) {
+          flush();
+          if ((tag === "ul" || tag === "ol") && node.matches("p,div,blockquote")) appendContainer(node, tag, emit, true, depth);
+          else append(node, push, depth + (tag === "ul" || tag === "ol" ? 1 : 0));
+          produced = true;
+        } else if (isElement(node) && node.querySelector(structural)) {
+          flush();
+          appendContainer(node, tag, emit, false, depth);
+          produced = true;
+        } else if (isElement(node) || node.nodeType === Node.TEXT_NODE) {
+          if (inline.length || node.nodeType !== Node.TEXT_NODE || node.data.trim() || container.tagName && node.data.includes(" ") && !/[\r\n]/.test(node.data)) inline.push(node);
+        }
+      }
+      if (keepEmpty && !produced && !inline.length) inline = [document.createElement("br")];
+      flush();
+    }
+    function push(tag, children, start) {
+      const block = createBlock(tag, children, start);
+      blocks.push(block);
+      return block;
+    }
+    function append(node, emit, depth) {
+      if (node.matches("table")) {
+        blocks.push(node);
+        return;
+      }
+      if (node.matches(lists)) {
+        const tag2 = node.localName;
+        depth = Math.max(depth, listDepth(node));
+        let start = node.hasAttribute("data-note-derived-start") ? null : node.getAttribute("start");
+        for (const item of [...node.children]) {
+          if (!item.matches("li")) {
+            append(item, emit, depth);
+            continue;
+          }
+          if (tag2 === "ol" && item.hasAttribute("value")) start = item.getAttribute("value");
+          appendContainer(item, tag2, (type, children) => {
+            const block = emit(type, children, type === tag2 ? start : null);
+            setListDepth(block, depth);
+            if (type === tag2) start = null;
+            return block;
+          }, true, depth);
+        }
+        return;
+      }
+      const tag = node.matches(headings) ? node.localName : node.matches("h1,h5,h6") ? "h3" : "p";
+      appendContainer(node, tag, emit, true);
+    }
+    appendContainer(root, "p", push);
+    return { blocks, owners };
+  }
+  function attachNoteBlocks(editor, onNewBlock) {
+    const signal = () => editor.dispatchEvent(new Event("input", { bubbles: true }));
+    function blockOf(node) {
+      let block = elementOf(node);
+      if (block === editor) return null;
+      while (block && block.parentElement !== editor) block = block.parentElement;
+      return block;
+    }
+    function blockAt(node, offset) {
+      if (node === editor) {
+        const following = editor.childNodes[offset];
+        const block2 = following || editor.lastElementChild;
+        return { block: block2, line: lineOf(block2), offset: following ? 0 : lineOf(block2)?.childNodes.length };
+      }
+      const block = blockOf(node);
+      return { block, line: lineOf(block) };
+    }
+    function ensureSelection(selection) {
+      if (!selection.rangeCount || !editor.contains(selection.focusNode)) selection.collapse(editor, editor.childNodes.length);
+      const { block, line, offset } = blockAt(selection.focusNode, selection.focusOffset);
+      if (selection.isCollapsed && block && !block.matches("table") && !line.contains(selection.focusNode)) selection.collapse(line, offset || 0);
+      return block;
+    }
+    function updateLists() {
+      const numbers = [];
+      let previousDepth = -1;
+      for (const block of editor.children) {
+        if (!block.matches(lists)) {
+          numbers.length = 0;
+          previousDepth = -1;
+          continue;
+        }
+        const depth = Math.min(listDepth(block), previousDepth + 1);
+        setListDepth(block, depth);
+        block.style.setProperty("--note-list-depth", depth);
+        block.dataset.noteListMarker = String(depth % 3);
+        numbers.length = depth + 1;
+        previousDepth = depth;
+        if (block.matches("ul")) {
+          numbers[depth] = 1;
+          continue;
+        }
+        let number = numbers[depth] ?? 1;
+        if (block.hasAttribute("start") && !block.hasAttribute("data-note-derived-start")) number = block.start;
+        else {
+          block.dataset.noteDerivedStart = "";
+          block.start = Math.min(number, 2147483647);
+        }
+        numbers[depth] = number + 1;
+      }
+    }
+    function canonical(node) {
+      if (!isElement(node)) return false;
+      if (node.matches("table")) return true;
+      if (node.matches(lists)) {
+        if (node.childNodes.length !== 1 || !node.firstElementChild?.matches("li") || node.firstElementChild.hasAttribute("value")) return false;
+        return !node.firstElementChild.querySelector(structural);
+      }
+      return node.matches(editableBlock) && !node.querySelector(structural);
+    }
+    function normalize() {
+      if (!editor.childNodes.length) editor.append(caretLine());
+      else if (![...editor.childNodes].every(canonical)) {
+        const selection = getSelection();
+        const selected = selection.rangeCount && editor.contains(selection.anchorNode) && editor.contains(selection.focusNode);
+        const anchor = selected && [selection.anchorNode, selection.anchorOffset], focus = selected && [selection.focusNode, selection.focusOffset];
+        const { blocks, owners } = flatten(editor);
+        editor.replaceChildren(...blocks.length ? blocks : [caretLine()]);
+        if (selected) {
+          const restore = ([node, offset]) => {
+            const target = editor.contains(node) ? node : owners.get(node) || lineOf(editor.lastElementChild);
+            const length = target.nodeType === Node.TEXT_NODE ? target.length : target.childNodes.length;
+            return [target, Math.min(offset, length)];
+          };
+          selection.setBaseAndExtent(...restore(anchor), ...restore(focus));
+        }
+      }
+      updateLists();
+    }
+    function changeType(block, tag, start = null) {
+      const oldLine = lineOf(block);
+      const replacement = createBlock(tag, [...oldLine.childNodes], start);
+      if (block.matches(lists) && replacement.matches(lists)) setListDepth(replacement, listDepth(block));
+      const line = lineOf(replacement);
+      line.className = oldLine.className;
+      line.style.color = oldLine.style.color;
+      line.style.fontWeight = oldLine.style.fontWeight;
+      block.replaceWith(replacement);
+      return line;
+    }
+    function format(selection, tag) {
+      const active = ensureSelection(selection);
+      if (!active || active.matches("table") && selection.isCollapsed) return;
+      const { anchorNode, anchorOffset, focusNode, focusOffset } = selection;
+      const selected = selection.getRangeAt(0), replacements = /* @__PURE__ */ new Map();
+      const from = selected.cloneRange(), to = selected.cloneRange();
+      from.collapse(true);
+      to.collapse(false);
+      const affected = [...editor.children].filter((block) => {
+        if (block.matches("table") || block.localName === tag) return false;
+        if (selection.isCollapsed) return block === active;
+        const content = document.createRange();
+        content.selectNodeContents(lineOf(block));
+        const start = content.cloneRange();
+        start.collapse(true);
+        content.collapse(false);
+        return from.compareBoundaryPoints(Range.START_TO_START, content) < 0 && to.compareBoundaryPoints(Range.START_TO_START, start) > 0;
+      });
+      for (const block of affected) {
+        const oldLine = lineOf(block);
+        const line = changeType(block, tag);
+        replacements.set(oldLine, line);
+        replacements.set(block, line);
+      }
+      if (replacements.size) {
+        selection.setBaseAndExtent(
+          replacements.get(anchorNode) || anchorNode,
+          anchorOffset,
+          replacements.get(focusNode) || focusNode,
+          focusOffset
+        );
+      }
+    }
+    function prefix(event) {
+      if (event.inputType !== "insertText" || event.data !== " " || event.isComposing || !event.cancelable) return;
+      const selection = getSelection();
+      if (!selection.isCollapsed || !editor.contains(selection.anchorNode)) return;
+      const block = blockOf(selection.anchorNode);
+      if (!block || block.matches("table")) return;
+      const before = selection.getRangeAt(0).cloneRange();
+      before.setStart(lineOf(block), 0);
+      const marker = before.toString(), match = marker.match(/^(\d+)\.$/);
+      const number = match ? Number(match[1]) : 0;
+      if (marker !== "*" && (number < 1 || number > 2147483647)) return;
+      event.preventDefault();
+      before.deleteContents();
+      selection.collapse(changeType(block, number ? "ol" : "ul", number || null), 0);
+      signal();
+    }
+    function enter(selection, block) {
+      const line = lineOf(block);
+      if (block.matches(lists) && !line.textContent && !line.querySelector("br+br")) {
+        selection.collapse(changeType(block, "p"), 0);
+        signal();
+        return;
+      }
+      const tail = selection.getRangeAt(0).cloneRange();
+      tail.setEnd(line, line.childNodes.length);
+      const next = createBlock(block.matches(lists) ? block.localName : "p", [...tail.extractContents().childNodes]);
+      fillLine(line);
+      line.removeAttribute("data-note-caret-line");
+      let preceding = block;
+      if (next.matches(lists)) {
+        setListDepth(next, listDepth(block));
+        while (preceding.nextElementSibling?.matches(lists) && listDepth(preceding.nextElementSibling) > listDepth(block)) {
+          preceding = preceding.nextElementSibling;
+        }
+      }
+      preceding.after(next);
+      selection.collapse(lineOf(next), 0);
+      signal();
+      onNewBlock?.(lineOf(next));
+    }
+    function join(event, selection, block) {
+      const line = lineOf(block);
+      const backward = event.key === "Backspace";
+      if (backward && block === editor.firstElementChild && block.matches("p") && !line.textContent) {
+        event.preventDefault();
+        block.remove();
+        if (!editor.firstElementChild) editor.append(caretLine());
+        const first2 = editor.firstElementChild;
+        const target = first2.matches("table") ? first2.rows[0]?.cells[0] || first2 : lineOf(first2);
+        selection.collapse(target, 0);
+        signal();
+        return;
+      }
+      const section = selection.getRangeAt(0).cloneRange();
+      if (backward) section.setStart(line, 0);
+      else section.setEnd(line, line.childNodes.length);
+      const breaks = section.cloneContents().querySelectorAll("br");
+      if (section.toString() || breaks.length && (backward || breaks[0].nextSibling || breaks.length > 1) && (line.textContent || line.querySelectorAll("br").length > 1)) return;
+      event.preventDefault();
+      if (backward && block.matches(lists)) {
+        if (listDepth(block)) changeListDepth(block, true);
+        else {
+          shiftListChildren(block, 0, -1);
+          selection.collapse(changeType(block, "p"), 0);
+          signal();
+        }
+        return;
+      }
+      const adjacent = backward ? block.previousElementSibling : block.nextElementSibling;
+      if (!adjacent) return;
+      if (adjacent.matches("table")) {
+        const row = backward ? adjacent.rows[adjacent.rows.length - 1] : adjacent.rows[0];
+        const cell = backward ? row?.cells[row.cells.length - 1] : row?.cells[0];
+        if (cell) selection.collapse(cell, backward ? cell.childNodes.length : 0);
+        return;
+      }
+      const first = backward ? adjacent : block, last = backward ? block : adjacent;
+      const destination = lineOf(first), source = lineOf(last);
+      removePlaceholder(destination);
+      const offset = destination.childNodes.length;
+      removePlaceholder(source);
+      destination.append(...source.childNodes);
+      fillLine(destination);
+      last.remove();
+      selection.collapse(destination, offset);
+      signal();
+    }
+    function shiftListChildren(block, depth, delta) {
+      for (let child = block.nextElementSibling; child?.matches(lists) && listDepth(child) > depth; child = child.nextElementSibling) {
+        setListDepth(child, listDepth(child) + delta);
+      }
+    }
+    function changeListDepth(block, outdent) {
+      const depth = listDepth(block);
+      const previous2 = block.previousElementSibling;
+      if (outdent ? depth === 0 : !previous2?.matches(lists) || listDepth(previous2) < depth) return;
+      const delta = outdent ? -1 : 1;
+      setListDepth(block, depth + delta);
+      shiftListChildren(block, depth, delta);
+      signal();
+    }
+    function keydown(event) {
+      if (event.isComposing || event.keyCode === 229 || event.ctrlKey || event.metaKey || event.altKey) return;
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const selection2 = getSelection();
+        const block2 = selection2.isCollapsed ? ensureSelection(selection2) : null;
+        if (block2?.matches(lists)) changeListDepth(block2, event.shiftKey);
+        return;
+      }
+      if (!["Enter", "Backspace", "Delete"].includes(event.key) || event.shiftKey) return;
+      const selection = getSelection();
+      let block = ensureSelection(selection);
+      if (!block || block.matches("table")) return;
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (!selection.isCollapsed) document.execCommand("delete");
+        block = ensureSelection(selection);
+        if (block && !block.matches("table")) enter(selection, block);
+      } else if (selection.isCollapsed) join(event, selection, block);
+    }
+    function insertTable(selection, table) {
+      const block = ensureSelection(selection);
+      if (block) block.after(table);
+      else editor.append(table);
+      if (block?.hasAttribute("data-note-caret-line") && !block.textContent) block.remove();
+      const cell = table.rows[0]?.cells[0];
+      if (cell) selection.collapse(cell, 0);
+    }
+    function removeBlock(selection, block) {
+      const next = block.nextElementSibling || block.previousElementSibling;
+      const following = next === block.nextElementSibling;
+      block.remove();
+      if (!next) editor.append(caretLine());
+      const target = next?.matches("table") ? next.rows[0]?.cells[0] : lineOf(next || editor.lastElementChild);
+      if (target) selection.collapse(target, following ? 0 : target.childNodes.length);
+      signal();
+    }
+    function paste(selection, html, text, inline = false) {
+      const active = ensureSelection(selection);
+      const lineForText = active && !active.matches("table") && lineOf(active);
+      if (inline && /[\r\n]/.test(text) && lineForText && lineForText.contains(selection.getRangeAt(0).commonAncestorContainer)) {
+        const caret2 = selection.getRangeAt(0);
+        caret2.deleteContents();
+        const inserted = document.createTextNode(text.replace(/\r\n?/g, "\n"));
+        removePlaceholder(lineForText);
+        caret2.insertNode(inserted);
+        selection.collapse(inserted, inserted.length);
+        signal();
+        return;
+      }
+      if (inline && !/[\r\n]/.test(text)) {
+        document.execCommand("insertText", false, text);
+        return;
+      }
+      const template2 = document.createElement("template");
+      template2.innerHTML = html;
+      const hasStructure = template2.content.querySelector(structural);
+      if (active?.matches("table") && !template2.content.querySelector("table") || !hasStructure && !/[\r\n]/.test(text)) {
+        document.execCommand(html ? "insertHTML" : "insertText", false, html || text);
+        return;
+      }
+      const pasted = html ? flatten(template2.content).blocks : text.split(/\r\n|\r|\n/).map((value) => createBlock("p", [document.createTextNode(value)]));
+      if (!pasted.length) return;
+      if (!selection.isCollapsed && !active?.matches("table")) document.execCommand("delete");
+      const block = ensureSelection(selection);
+      if (!block) {
+        editor.append(...pasted);
+        signal();
+        return;
+      }
+      const line = lineOf(block);
+      let trailing;
+      if (!block.matches("table")) {
+        const tail = selection.getRangeAt(0).cloneRange();
+        tail.setEnd(line, line.childNodes.length);
+        const content = tail.extractContents();
+        if (content.textContent || content.querySelector("br") && line.textContent) {
+          trailing = createBlock(block.localName, [...content.childNodes]);
+          if (block.matches(lists)) setListDepth(trailing, listDepth(block));
+        }
+        if (line.textContent) fillLine(line);
+      }
+      const last = pasted[pasted.length - 1];
+      block.after(...pasted, ...trailing ? [trailing] : []);
+      if (!block.matches("table") && !line.textContent) block.remove();
+      const caret = last.matches("table") ? last.rows[0]?.cells[0] : lineOf(last);
+      if (caret) selection.collapse(caret, last.matches("table") ? 0 : caret.childNodes.length);
+      signal();
+    }
+    function serialize(html) {
+      const template2 = document.createElement("template");
+      template2.innerHTML = html;
+      const levels = [];
+      for (const block of [...template2.content.children]) {
+        if (!block.matches(lists)) {
+          levels.length = 0;
+          continue;
+        }
+        const depth = Math.min(listDepth(block), levels.length);
+        delete block.dataset.noteListDepth;
+        levels.length = depth + 1;
+        const previous2 = levels[depth];
+        if (block.localName === previous2?.localName && !block.hasAttribute("start")) {
+          previous2.append(...block.childNodes);
+          block.remove();
+        } else {
+          if (depth) levels[depth - 1].lastElementChild.append(block);
+          levels[depth] = block;
+        }
+      }
+      return template2.innerHTML;
+    }
+    editor.addEventListener("input", normalize);
+    editor.addEventListener("beforeinput", prefix);
+    editor.addEventListener("keydown", keydown);
+    return { normalize, format, insertTable, removeBlock, paste, serialize };
+  }
+
+  // block-editor-kit/assets/rich-text.js
+  var inlineClipboard = "application/x-block-editor-kit-text";
+  var colors = { red: "#e34242", green: "#129966", yellow: "#b58a16" };
+  var noteTags = /* @__PURE__ */ new Set(["B", "STRONG", "U", "UL", "OL", "LI", "DIV", "P", "BR", "SPAN", "FONT", "BLOCKQUOTE"]);
+  var documentTags = /* @__PURE__ */ new Set(["I", "EM", "H1", "H2", "H3", "H4", "H5", "H6", "TABLE", "COLGROUP", "COL", "THEAD", "TBODY", "TFOOT", "TR", "TH", "TD"]);
+  var removedTags = /* @__PURE__ */ new Set(["SCRIPT", "STYLE", "IFRAME", "OBJECT", "SVG", "MATH", "IMG", "TEMPLATE", "NOSCRIPT"]);
+  function clean(html) {
+    const template2 = document.createElement("template");
+    template2.innerHTML = html || "";
+    function visit(node) {
+      for (const child of [...node.childNodes]) {
+        if (child.nodeType === 3) continue;
+        if (child.nodeType !== 1 || child.namespaceURI !== "http://www.w3.org/1999/xhtml" || removedTags.has(child.tagName) || child.matches("button.note-table-handle[data-table-axis][contenteditable=false]")) {
+          child.remove();
+          continue;
+        }
+        if (child.hasAttribute("data-note-caret-line") && !child.textContent && child.childNodes.length === 1 && child.firstChild.nodeName === "BR") {
+          child.remove();
+          continue;
+        }
+        visit(child);
+        if (!noteTags.has(child.tagName) && !documentTags.has(child.tagName)) {
+          child.replaceWith(...child.childNodes);
+          continue;
+        }
+        const isDefault = child.classList.contains("note-color-default");
+        const color = child.getAttribute("color") || child.style.color, indent = child.style.marginLeft;
+        const weight = child.style.fontWeight;
+        const spans = child.matches("th,td") ? ["colspan", "rowspan"].map((name2) => [name2, child.getAttribute(name2)]) : [];
+        const headers = child.tagName === "TABLE" ? ["data-header-row", "data-header-column"].map((name2) => [name2, child.getAttribute(name2)]) : [];
+        const width = ["TABLE", "COL"].includes(child.tagName) ? child.style.width : "";
+        const sized = child.tagName === "COLGROUP" && child.hasAttribute("data-note-widths");
+        const numberAttr = { OL: "start", LI: "value" }[child.tagName];
+        const number = numberAttr && !child.hasAttribute("data-note-derived-start") && child.getAttribute(numberAttr);
+        const depth = child.matches("ol,ul") && child.dataset.noteListDepth;
+        for (const attr of [...child.attributes]) child.removeAttribute(attr.name);
+        const normalized = color?.replaceAll(" ", "").toLowerCase();
+        const name = Object.keys(colors).find((k) => [colors[k], { red: "rgb(227,66,66)", green: "rgb(18,153,102)", yellow: "rgb(181,138,22)" }[k]].includes(normalized));
+        if (isDefault) child.className = "note-color-default";
+        else if (name) {
+          child.className = "note-color-" + name;
+          child.style.color = colors[name];
+        }
+        if (/^\d{1,3}px$/.test(indent)) child.style.marginLeft = Math.min(240, parseInt(indent)) + "px";
+        if (/^(?:normal|bold|[1-9]00)$/.test(weight)) child.style.fontWeight = weight;
+        for (const [attribute, value] of spans) if (/^[1-9]\d?$/.test(value || "")) child.setAttribute(attribute, value);
+        for (const [attribute, value] of headers) if (value === "true" || value === "false") child.setAttribute(attribute, value);
+        if (sized) child.setAttribute("data-note-widths", "");
+        if (/^[1-9]\d*$/.test(depth || "")) child.dataset.noteListDepth = depth;
+        if (numberAttr && /^-?\d{1,10}$/.test(number || "") && Number(number) >= -2147483648 && Number(number) <= 2147483647) {
+          child.setAttribute(numberAttr, String(Number(number)));
+        }
+        if (/^\d{1,8}px$/.test(width)) child.style.width = width;
+      }
+    }
+    visit(template2.content);
+    return template2.innerHTML;
+  }
+  function createRichText(textarea, toolbarHost, listen, onNewBlock) {
+    const editor = document.createElement("div"), toolbar = document.createElement("div");
+    editor.id = textarea.id;
+    editor.className = "note-rich-editor note-document";
+    editor.contentEditable = "true";
+    editor.setAttribute("role", "textbox");
+    editor.setAttribute("aria-multiline", "true");
+    if (textarea.hasAttribute("aria-labelledby")) editor.setAttribute("aria-labelledby", textarea.getAttribute("aria-labelledby"));
+    else editor.setAttribute("aria-label", textarea.getAttribute("aria-label") || "\u6B63\u6587");
+    editor.dataset.placeholder = textarea.placeholder;
+    toolbar.className = "note-rich-toolbar";
+    toolbar.setAttribute("role", "toolbar");
+    toolbar.setAttribute("aria-label", "\u6587\u5B57\u683C\u5F0F");
+    toolbarHost.append(toolbar);
+    textarea.replaceWith(editor);
+    let range, selectedBlock;
+    function ownsBlockSelection(selection = getSelection()) {
+      if (!selectedBlock || selectedBlock.parentElement !== editor || !selection.rangeCount) return false;
+      const selected = selection.getRangeAt(0);
+      return selected.startContainer === editor && selected.endContainer === editor && selected.endOffset === selected.startOffset + 1 && editor.childNodes[selected.startOffset] === selectedBlock;
+    }
+    function clearBlockSelection(placeCaret = false) {
+      if (!selectedBlock) return;
+      const block = selectedBlock;
+      const keepCaret = placeCaret && ownsBlockSelection();
+      selectedBlock = null;
+      block.classList.remove("bek-block-selected");
+      editor.classList.remove("bek-has-block-selection");
+      if (keepCaret) {
+        const line = block.matches("ul,ol") ? block.firstElementChild : block;
+        getSelection().collapse(line, line.childNodes.length);
+      }
+    }
+    function selectBlock(block) {
+      if (!block || block.parentElement !== editor) return;
+      clearBlockSelection();
+      editor.focus({ preventScroll: true });
+      const selected = document.createRange();
+      selected.selectNode(block);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(selected);
+      selectedBlock = block;
+      block.classList.add("bek-block-selected");
+      editor.classList.add("bek-has-block-selection");
+    }
+    listen(document, "selectionchange", () => {
+      if (!ownsBlockSelection()) clearBlockSelection();
+    });
+    listen(document, "pointerdown", (event) => {
+      if (!event.target.closest(".note-block-handle")) clearBlockSelection(true);
+    }, true);
+    listen(editor, "blur", () => clearBlockSelection());
+    listen(editor, "input", () => clearBlockSelection());
+    listen(editor, "keydown", (event) => {
+      if (event.key === "Escape" && ownsBlockSelection()) {
+        event.preventDefault();
+        clearBlockSelection(true);
+      } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
+        clearBlockSelection(true);
+      }
+    }, true);
+    const blocks = attachNoteBlocks(editor, onNewBlock);
+    function updateEmpty() {
+      const text = editor.textContent.replace(/[\s\u200b\uFEFF]/g, "");
+      editor.dataset.empty = String(!text && !editor.querySelector("ul,ol,h2,h3,h4,table"));
+    }
+    listen(editor, "input", updateEmpty);
+    updateEmpty();
+    function remember() {
+      const selection = getSelection();
+      if (!selection.rangeCount) return;
+      const current = selection.getRangeAt(0);
+      if (editor.contains(current.commonAncestorContainer)) range = current.cloneRange();
+    }
+    function applySelectionColor(selection, value) {
+      if (!selection.rangeCount || selection.isCollapsed) return false;
+      const selected = selection.getRangeAt(0);
+      if (!editor.contains(selected.commonAncestorContainer)) return false;
+      const colorName = value === "inherit" ? "default" : Object.keys(colors).find((name) => colors[name] === value);
+      if (!colorName) return false;
+      const walker = document.createTreeWalker(editor, NodeFilter.SHOW_TEXT);
+      const pieces = [];
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!selected.intersectsNode(node)) continue;
+        const start = node === selected.startContainer ? selected.startOffset : 0;
+        const end = node === selected.endContainer ? selected.endOffset : node.length;
+        if (start < end) pieces.push({ node, start, end });
+      }
+      if (!pieces.length) return false;
+      const colored = pieces.map(({ node, start, end }) => {
+        if (end < node.length) node.splitText(end);
+        const text = start ? node.splitText(start) : node;
+        const parent = text.parentElement;
+        const span = parent.tagName === "SPAN" && parent.childNodes.length === 1 && Object.keys(colors).concat("default").some((name) => parent.classList.contains("note-color-" + name)) ? parent : document.createElement("span");
+        span.className = "note-color-" + colorName;
+        span.style.color = colors[colorName] || "";
+        if (span !== parent) {
+          text.before(span);
+          span.append(text);
+        }
+        return text;
+      });
+      const updated = document.createRange();
+      updated.setStart(colored[0], 0);
+      const last = colored[colored.length - 1];
+      updated.setEnd(last, last.length);
+      selection.removeAllRanges();
+      selection.addRange(updated);
+      return true;
+    }
+    function restoreSelection2() {
+      const savedRange = range;
+      editor.focus();
+      const selection = getSelection();
+      if (savedRange && editor.contains(savedRange.commonAncestorContainer)) {
+        selection.removeAllRanges();
+        selection.addRange(savedRange);
+      } else if (!savedRange) selection.collapse(editor, editor.childNodes.length);
+      return selection;
+    }
+    function command(cmd, value) {
+      const selection = restoreSelection2();
+      const blockType = { formatBlock: value, insertOrderedList: "ol", insertUnorderedList: "ul" }[cmd];
+      if (blockType) blocks.format(selection, blockType);
+      else if (cmd !== "foreColor" || !applySelectionColor(selection, value)) {
+        if (cmd === "bold") document.execCommand("styleWithCSS", false, false);
+        document.execCommand(cmd, false, value === "inherit" ? getComputedStyle(editor).color : value);
+      }
+      remember();
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+    const icons = { bold: '<path d="M6 3h6a4 4 0 0 1 0 8H6zm0 8h7a4 4 0 0 1 0 8H6z"/>', underline: '<path d="M6 3v7a5 5 0 0 0 10 0V3M4 20h14"/>', insertUnorderedList: '<path d="M8 5h12M8 11h12M8 17h12"/><circle cx="3" cy="5" r="1"/><circle cx="3" cy="11" r="1"/><circle cx="3" cy="17" r="1"/>', foreColor: '<path d="m6 16 5-13 5 13M8 11h6M4 21h14"/>' };
+    const tools = [["\u52A0\u7C97", "bold"], ["\u4E0B\u5212\u7EBF", "underline"], ["\u9879\u76EE\u7B26\u53F7", "insertUnorderedList"], ["\u7EA2\u8272", "foreColor", colors.red], ["\u7EFF\u8272", "foreColor", colors.green], ["\u9EC4\u8272", "foreColor", colors.yellow], ["\u9ED8\u8BA4\u8272", "foreColor", "inherit"]];
+    tools.unshift(["\u6B63\u6587", "formatBlock", "p", "\xB6"], ["\u5C0F\u6807\u9898", "formatBlock", "h3", "H"], ["\u659C\u4F53", "italic", void 0, "\u{1D470}"], ["\u7F16\u53F7\u5217\u8868", "insertOrderedList", void 0, "1."]);
+    for (const [text, cmd, value, label] of tools) {
+      const button = document.createElement("button");
+      button.type = "button";
+      if (label) button.textContent = label;
+      else button.innerHTML = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + icons[cmd] + "</svg>";
+      button.dataset.tooltip = text;
+      button.setAttribute("aria-label", text);
+      if (cmd === "foreColor" && value !== "inherit") button.classList.add("note-tool-" + Object.keys(colors).find((k) => colors[k] === value));
+      button.onmousedown = (event) => event.preventDefault();
+      button.onclick = () => {
+        command(cmd, value);
+      };
+      toolbar.append(button);
+    }
+    for (const event of ["keyup", "mouseup", "focus", "input"]) listen(editor, event, remember);
+    listen(document, "selectionchange", remember);
+    function constrainTripleClickSelection(event) {
+      if (event.detail !== 3 || event.button !== 0 || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey) return;
+      const block = event.target.closest("p,div,h2,h3,h4,blockquote,li,td,th");
+      if (!block || !editor.contains(block) || block === editor || block.closest("td,th")) return;
+      const line = document.createRange();
+      line.selectNodeContents(block);
+      const selection = getSelection();
+      selection.removeAllRanges();
+      selection.addRange(line);
+    }
+    listen(editor, "click", constrainTripleClickSelection);
+    function copySelection(event) {
+      const selection = getSelection();
+      if (!event.clipboardData || !selection?.rangeCount || selection.isCollapsed || !editor.contains(selection.getRangeAt(0).commonAncestorContainer) || editor.classList.contains("note-table-selected")) return;
+      const whole = ownsBlockSelection(selection);
+      const text = whole ? selectedBlock.innerText : selection.toString();
+      event.preventDefault();
+      event.clipboardData.setData("text/plain", text);
+      if (whole) event.clipboardData.setData("text/html", clean(selectedBlock.outerHTML));
+      else event.clipboardData.setData(inlineClipboard, "1");
+      if (event.type === "cut") {
+        if (whole) {
+          const block = selectedBlock;
+          clearBlockSelection();
+          blocks.removeBlock(selection, block);
+        } else document.execCommand("delete");
+      }
+    }
+    listen(editor, "copy", copySelection);
+    listen(editor, "cut", copySelection);
+    listen(editor, "paste", (event) => {
+      if (!event.clipboardData) return;
+      event.preventDefault();
+      const text = event.clipboardData.getData("text/plain");
+      const inline = event.clipboardData.getData(inlineClipboard) === "1";
+      const html = inline ? "" : clean(event.clipboardData.getData("text/html"));
+      if (!html && !text) return;
+      const selection = getSelection();
+      if (ownsBlockSelection()) clearBlockSelection(true);
+      blocks.paste(selection, html, text, inline);
+    });
+    listen(editor, "drop", (event) => event.preventDefault());
+    return {
+      element: editor,
+      selectBlock,
+      clearBlockSelection,
+      set(text, html) {
+        clearBlockSelection();
+        const cleaned = html ? clean(html) : "";
+        editor.innerHTML = cleaned;
+        if (!cleaned && text) {
+          for (const value of text.split(/\r\n|\r|\n/)) {
+            const line = document.createElement("p");
+            line.append(value || document.createElement("br"));
+            editor.append(line);
+          }
+        } else if (!cleaned) editor.textContent = text || "";
+        blocks.normalize();
+        updateEmpty();
+        range = null;
+      },
+      text() {
+        return editor.innerText.trim();
+      },
+      html() {
+        const html = clean(editor.innerHTML);
+        return blocks.serialize(html);
+      },
+      insertTable() {
+        const table = document.createElement("table");
+        const body = table.createTBody();
+        for (let index = 0; index < 2; index++) {
+          const row = body.insertRow();
+          for (let column = 0; column < 3; column++) row.insertCell().append(document.createElement("br"));
+        }
+        blocks.insertTable(restoreSelection2(), table);
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+        remember();
+      }
+    };
+  }
+
+  // block-editor-kit/assets/tables.js
+  function simpleTable(table) {
+    const rows = [...table.rows];
+    const columns = rows[0]?.cells.length;
+    return Boolean(columns && rows.every((row) => row.cells.length === columns && [...row.cells].every((cell) => cell.colSpan === 1 && cell.rowSpan === 1 && !cell.querySelector("table"))));
+  }
+  function fillCell(cell) {
+    cell.append(document.createElement("br"));
+    return cell;
+  }
+  var minimumWidth = 90;
+  var widthGroup = (table) => table.querySelector(":scope > colgroup[data-note-widths]");
+  function copyTable(table) {
+    const copy = table.cloneNode(true);
+    copy.querySelectorAll(".note-table-handle").forEach((handle) => handle.remove());
+    copy.querySelectorAll(".note-table-cell-selected").forEach((cell) => cell.classList.remove("note-table-cell-selected"));
+    return copy;
+  }
+  function writeColumnWidths(table, widths) {
+    let group = widthGroup(table);
+    if (!group) {
+      for (const old of table.querySelectorAll(":scope > colgroup")) old.remove();
+      group = document.createElement("colgroup");
+      group.setAttribute("data-note-widths", "");
+      const caption = table.querySelector(":scope > caption");
+      if (caption) caption.after(group);
+      else table.prepend(group);
+    }
+    group.replaceChildren(...widths.map((width) => {
+      const column = document.createElement("col");
+      column.style.width = width + "px";
+      return column;
+    }));
+    table.style.width = widths.reduce((total, width) => total + width, 0) + "px";
+  }
+  function adjustStoredWidths(table, index, remove) {
+    const group = widthGroup(table);
+    if (!group) return;
+    const widths = [...group.children].map((col) => parseInt(col.style.width, 10) || minimumWidth);
+    if (remove) widths.splice(index, 1);
+    else widths.splice(index, 0, widths[index - 1] || widths[index] || minimumWidth);
+    writeColumnWidths(table, widths);
+  }
+  function changeTable(table, cell, action) {
+    const row = cell.parentElement;
+    const rows = [...table.rows];
+    const column = cell.cellIndex;
+    switch (action) {
+      case "append-row":
+      case "insert-row-above":
+      case "insert-row": {
+        const anchor = action === "append-row" ? rows.at(-1) : row;
+        const section = anchor.parentElement;
+        const index = anchor.sectionRowIndex + (action === "insert-row-above" ? 0 : 1);
+        const atHeaderEnd = section === table.tHead && index === section.rows.length;
+        const added = atHeaderEnd ? (table.tBodies[0] || table.createTBody()).insertRow(0) : section.insertRow(index);
+        for (const source of anchor.cells) {
+          const tag = added.parentElement === table.tHead && source.tagName === "TH" ? "th" : "td";
+          added.append(fillCell(document.createElement(tag)));
+        }
+        return added.cells[column];
+      }
+      case "append-column":
+      case "insert-column-left":
+      case "insert-column": {
+        const index = action === "append-column" ? rows[0].cells.length : column + (action === "insert-column-left" ? 0 : 1);
+        for (const current of rows) {
+          const tag = [...current.cells].every((item) => item.tagName === "TH") ? "th" : "td";
+          current.insertBefore(fillCell(document.createElement(tag)), current.cells[index] || null);
+        }
+        adjustStoredWidths(table, index, false);
+        return row.cells[index];
+      }
+      case "delete-row": {
+        const next = rows[row.rowIndex + 1] || rows[row.rowIndex - 1];
+        row.remove();
+        return next.cells[column];
+      }
+      case "delete-column":
+        for (const current of rows) current.deleteCell(column);
+        adjustStoredWidths(table, column, true);
+        return row.cells[Math.min(column, row.cells.length - 1)];
+      case "duplicate-table": {
+        const copy = copyTable(table);
+        table.after(fillCell(document.createElement("p")), copy);
+        return copy.rows[row.rowIndex].cells[column];
+      }
+      case "delete-table": {
+        const paragraph = fillCell(document.createElement("p"));
+        table.replaceWith(paragraph);
+        return paragraph;
+      }
+      case "header-row":
+        table.dataset.headerRow = String(!hasHeaderRow(table));
+        break;
+      case "header-column":
+        table.dataset.headerColumn = String(table.dataset.headerColumn !== "true");
+        break;
+    }
+    return cell;
+  }
+  function hasHeaderRow(table) {
+    return table.dataset.headerRow === "true" || table.dataset.headerRow === void 0 && [...table.rows[0].cells].every((cell) => cell.tagName === "TH");
+  }
+  function firstMovableIndex(table, axis) {
+    return Number(axis === "row" ? hasHeaderRow(table) : table.dataset.headerColumn === "true");
+  }
+  function canMoveAxis(table, axis, from) {
+    const length = axis === "row" ? table.rows.length : table.rows[0].cells.length;
+    const first = firstMovableIndex(table, axis);
+    return from >= first && length - first > 1;
+  }
+  function canUseTableAction(table, cell, action) {
+    if (action === "header-row") return cell.parentElement.rowIndex === 0;
+    if (action === "header-column") return cell.cellIndex === 0;
+    if (action === "duplicate-table" || action === "delete-table") return true;
+    if (!simpleTable(table)) return false;
+    const pinnedRow = cell.parentElement.rowIndex < firstMovableIndex(table, "row");
+    const pinnedColumn = cell.cellIndex < firstMovableIndex(table, "column");
+    if (action === "insert-row-above") return !pinnedRow;
+    if (action === "insert-column-left") return !pinnedColumn;
+    if (action === "delete-row") return !pinnedRow && table.rows.length > 1;
+    if (action === "delete-column") return !pinnedColumn && cell.parentElement.cells.length > 1;
+    return true;
+  }
+  function moveAxis(table, axis, from, to) {
+    if (from === to || !canMoveAxis(table, axis, from) || to < firstMovableIndex(table, axis)) return;
+    const rows = [...table.rows];
+    if (axis === "column") {
+      for (const row of rows) {
+        const cells = [...row.cells];
+        row.insertBefore(cells[from], cells[to + (from < to ? 1 : 0)] || null);
+      }
+      const group = widthGroup(table);
+      if (group) {
+        const columns = [...group.children];
+        group.insertBefore(columns[from], columns[to + (from < to ? 1 : 0)] || null);
+      }
+      return;
+    }
+    const sections = rows.map((row) => row.parentElement);
+    const [moved] = rows.splice(from, 1);
+    rows.splice(to, 0, moved);
+    rows.forEach((row, index) => sections[index].append(row));
+  }
+  function documentDropTarget(editor, y) {
+    const blocks = [...editor.children].map((node) => ({ node, rect: node.getBoundingClientRect() })).filter((block) => block.rect.height);
+    if (!blocks.length) return null;
+    let closest = { before: blocks[0].node, y: blocks[0].rect.top };
+    blocks.forEach(({ rect }, index) => {
+      const next = blocks[index + 1];
+      const edge = next ? (rect.bottom + next.rect.top) / 2 : rect.bottom;
+      if (Math.abs(y - edge) < Math.abs(y - closest.y)) closest = { before: next?.node || null, y: edge };
+    });
+    return closest;
+  }
+  function attachTableControls(editor, scrollPort, controls, textSelection, listen, blockSelection) {
+    const options = controls.querySelector("[data-table-action=options]");
+    const blockHandle = document.createElement("button");
+    blockHandle.type = "button";
+    blockHandle.className = "note-block-handle";
+    blockHandle.title = "\u5355\u51FB\u9009\u4E2D\uFF0C\u62D6\u52A8\u79FB\u52A8";
+    blockHandle.setAttribute("aria-label", "\u9009\u4E2D\u6B64\u5757\uFF0C\u62D6\u52A8\u79FB\u52A8");
+    blockHandle.hidden = true;
+    controls.after(blockHandle);
+    const menu = controls.querySelector(".note-table-menu");
+    const addRow = controls.querySelector("[data-table-action=append-row]");
+    const addColumn = controls.querySelector("[data-table-action=append-column]");
+    const handles = [...controls.querySelectorAll("[data-table-axis]")];
+    const outline = controls.querySelector(".note-table-outline");
+    const guide = controls.querySelector(".note-table-resize-guide");
+    const preview = controls.querySelector(".note-table-drag-preview");
+    const buttons = new Map([...menu.querySelectorAll("[data-table-action]")].map((button) => [button.dataset.tableAction, button]));
+    let cell, table, hoverCell, menuAnchor, pendingDelete, drag, reorder, ignoreHandleClick;
+    let textDrag, selectionFrame, tableDrag, ignoreOptionsClick;
+    let outlinedCell = null, hoveredBlock = null, hoveredFirstLine = null, pointer;
+    function placeHandleInHeader(handle, target) {
+      const parent = target || controls;
+      if (handle.parentElement === parent) return;
+      handle.classList.toggle("is-anchored", Boolean(target));
+      if (target) {
+        handle.style.removeProperty("left");
+        handle.style.removeProperty("top");
+      }
+      parent.append(handle);
+    }
+    function outlineCell(target) {
+      if (target === outlinedCell) return;
+      outlinedCell?.classList.remove("note-table-cell-selected");
+      outlinedCell = target;
+      outlinedCell?.classList.add("note-table-cell-selected");
+    }
+    function visibleDocument() {
+      const area = scrollPort.getBoundingClientRect();
+      return {
+        left: Math.max(0, area.left),
+        top: Math.max(0, area.top),
+        right: Math.min(innerWidth, area.left + scrollPort.clientWidth),
+        bottom: Math.min(innerHeight, area.top + scrollPort.clientHeight)
+      };
+    }
+    function hideBlockHandle() {
+      hoveredBlock = null;
+      hoveredFirstLine = null;
+      blockHandle.hidden = true;
+    }
+    function textAtPointer(block, x, y) {
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      const range = document.createRange();
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (!node.data.trim()) continue;
+        range.selectNodeContents(node);
+        for (const rect of range.getClientRects()) {
+          if (x >= rect.left && x < rect.right && y >= rect.top && y < rect.bottom) return rect;
+        }
+      }
+      return null;
+    }
+    function moveBlockHandle(event) {
+      const { clientX: x, clientY: y } = event;
+      if (tableDrag || pointer?.x === x && pointer?.y === y) return;
+      pointer = { x, y };
+      const viewport = visibleDocument();
+      const clipTop = viewport.top + (parseFloat(getComputedStyle(scrollPort).scrollPaddingTop) || 0);
+      if (event.buttons || x < viewport.left || x >= viewport.right || y < clipTop || y >= viewport.bottom) {
+        hideBlockHandle();
+        return;
+      }
+      if (event.target === blockHandle) return;
+      let block = event.target;
+      while (block && block.parentElement !== editor) block = block.parentElement;
+      const hit = block && !block.matches("table") && textAtPointer(block, x, y);
+      if (!hit) {
+        if (hoveredFirstLine) {
+          const handle = blockHandle.getBoundingClientRect();
+          if (x >= handle.left && x < hoveredFirstLine.left && y >= Math.min(handle.top, hoveredFirstLine.top) && y < Math.max(handle.bottom, hoveredFirstLine.bottom)) return;
+        }
+        hideBlockHandle();
+        return;
+      }
+      const line = block.matches("ul,ol") ? block.firstElementChild : block;
+      const rect = line.getBoundingClientRect();
+      const lineHeight = parseFloat(getComputedStyle(line).lineHeight) || rect.height;
+      const firstLine = { left: rect.left, top: rect.top, bottom: rect.top + lineHeight };
+      if (firstLine.top < clipTop - 0.5 || firstLine.bottom > viewport.bottom + 0.5) {
+        hideBlockHandle();
+        return;
+      }
+      blockHandle.hidden = false;
+      const left = editor.getBoundingClientRect().left - 8 - blockHandle.offsetWidth;
+      const top = (firstLine.top + firstLine.bottom - blockHandle.offsetHeight) / 2;
+      const origin = blockHandle.offsetParent;
+      if (!origin || left < viewport.left || clipTop + blockHandle.offsetHeight > viewport.bottom) {
+        hideBlockHandle();
+        return;
+      }
+      const bounds = origin.getBoundingClientRect();
+      blockHandle.style.left = left - bounds.left + "px";
+      blockHandle.style.top = top - bounds.top + "px";
+      hoveredBlock = block;
+      hoveredFirstLine = firstLine;
+    }
+    listen(scrollPort, "pointermove", moveBlockHandle);
+    listen(scrollPort, "pointerleave", () => {
+      pointer = null;
+      if (!tableDrag) hideBlockHandle();
+    });
+    listen(document, "keydown", (event) => {
+      if (!tableDrag && event.target !== blockHandle) hideBlockHandle();
+    }, true);
+    listen(window, "blur", () => {
+      if (!tableDrag) hideBlockHandle();
+    });
+    listen(blockHandle, "mousedown", (event) => event.preventDefault());
+    function visibleCellTop(target, top) {
+      const grid = target?.closest("table");
+      const header = grid?.rows[0];
+      return header && target.parentElement !== header && hasHeaderRow(grid) ? Math.max(top, header.getBoundingClientRect().bottom) : top;
+    }
+    function scheduleTextSelection() {
+      if (selectionFrame !== void 0) return;
+      selectionFrame = requestAnimationFrame(() => {
+        selectionFrame = void 0;
+        const selection = getSelection();
+        const highlights = [];
+        let paintsTextSelection = false;
+        if (selection.rangeCount && !selection.isCollapsed && menuAnchor !== options && !editor.classList.contains("bek-has-block-selection")) {
+          const range = selection.getRangeAt(0);
+          if (editor.contains(range.commonAncestorContainer)) {
+            paintsTextSelection = true;
+            const viewport = visibleDocument();
+            const gutter = parseFloat(getComputedStyle(scrollPort).scrollPaddingTop) || 0;
+            const walker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT);
+            const piece = document.createRange();
+            let node = walker.root.nodeType === Node.TEXT_NODE ? walker.root : walker.nextNode();
+            for (; node; node = walker.nextNode()) {
+              if (!range.intersectsNode(node) || !node.length) continue;
+              const topLimit = visibleCellTop(node.parentElement.closest("td,th"), viewport.top + gutter);
+              const start = node === range.startContainer ? range.startOffset : 0;
+              const end = node === range.endContainer ? range.endOffset : node.length;
+              for (const match of node.data.slice(start, end).matchAll(/[^\s\u200B-\u200D\u2060\uFEFF]+/gu)) {
+                const offset = start + match.index;
+                piece.setStart(node, offset);
+                piece.setEnd(node, offset + match[0].length);
+                for (const rect of piece.getClientRects()) {
+                  const left = Math.max(rect.left, viewport.left), top = Math.max(rect.top, topLimit);
+                  const right = Math.min(rect.right, viewport.right), bottom = Math.min(rect.bottom, viewport.bottom);
+                  if (right <= left || bottom <= top) continue;
+                  const mark = document.createElement("span");
+                  Object.assign(mark.style, { left: left + "px", top: top + "px", width: right - left + "px", height: bottom - top + "px" });
+                  highlights.push(mark);
+                }
+              }
+            }
+          }
+        }
+        textSelection.replaceChildren(...highlights);
+        editor.classList.toggle("note-text-selection-painted", paintsTextSelection);
+      });
+    }
+    function textCaret(event) {
+      const position2 = document.caretPositionFromPoint?.(event.clientX, event.clientY);
+      if (position2) return { node: position2.offsetNode, offset: position2.offset };
+      const range = document.caretRangeFromPoint?.(event.clientX, event.clientY);
+      return range ? { node: range.startContainer, offset: range.startOffset } : null;
+    }
+    listen(editor, "mousedown", (event) => {
+      if (event.button === 0 && event.detail === 2 && event.target.closest("td,th")) {
+        event.preventDefault();
+      }
+    });
+    listen(editor, "dblclick", (event) => {
+      if (event.target.closest("td,th")) event.preventDefault();
+    });
+    listen(editor, "pointerdown", (event) => {
+      textDrag = null;
+      if (event.button !== 0 || event.shiftKey || drag || reorder || tableDrag) return;
+      const startCell = event.target.closest("td,th");
+      if (!startCell) return;
+      const start = textCaret(event);
+      if (startCell?.contains(start?.node)) textDrag = { ...start, cell: startCell, id: event.pointerId, active: false };
+    });
+    listen(document, "mousemove", (event) => {
+      if (!textDrag || !(event.buttons & 1) || drag || reorder || tableDrag || !editor.contains(textDrag.node)) return;
+      const end = textCaret(event);
+      if (!end || !editor.contains(end.node)) return;
+      if (!textDrag.active && textDrag.cell.contains(end.node)) return;
+      event.preventDefault();
+      textDrag.active = true;
+      getSelection().setBaseAndExtent(textDrag.node, textDrag.offset, end.node, end.offset);
+      scheduleTextSelection();
+    }, true);
+    for (const type of ["pointerup", "pointercancel"]) listen(document, type, (event) => {
+      if (textDrag?.id === event.pointerId) textDrag = null;
+    }, true);
+    function cancelDelete() {
+      if (!pendingDelete) return;
+      pendingDelete.button.textContent = pendingDelete.label;
+      pendingDelete = null;
+    }
+    function closeMenu() {
+      if (menuAnchor === options) {
+        if (cell && editor.contains(cell)) {
+          const selection = getSelection();
+          if (selection.rangeCount && !selection.isCollapsed) selection.collapse(cell, 0);
+        }
+        editor.classList.remove("note-table-selected");
+      }
+      menu.hidden = true;
+      menuAnchor?.setAttribute("aria-expanded", "false");
+      menuAnchor = null;
+      cancelDelete();
+      scheduleTextSelection();
+    }
+    function openMenu(anchor) {
+      if (menuAnchor === anchor) {
+        closeMenu();
+        position();
+        return;
+      }
+      closeMenu();
+      menuAnchor = anchor;
+      anchor.setAttribute("aria-expanded", "true");
+      menu.hidden = false;
+      const axis = anchor.dataset.tableAxis;
+      for (const [action, button] of buttons) {
+        const actionAxis = action.includes("-row") ? "row" : action.includes("-column") ? "column" : null;
+        button.hidden = (axis || null) !== actionAxis || action.startsWith("header-") && !canUseTableAction(table, cell, action);
+      }
+      if (anchor === options) {
+        editor.classList.add("note-table-selected");
+        const range = document.createRange();
+        range.selectNode(table);
+        const selection = getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+      }
+      position();
+      scheduleTextSelection();
+      menu.querySelector("button:not([hidden]):not(:disabled)")?.focus({ preventScroll: true });
+    }
+    function activate(next) {
+      const candidate = next?.closest("table");
+      const active = candidate && editor.contains(candidate) && candidate.rows.length ? candidate : null;
+      if (table !== active || cell !== next) closeMenu();
+      table = active;
+      cell = active ? next : null;
+      position();
+    }
+    function position() {
+      if (tableDrag?.active) {
+        showTableDrag();
+        return;
+      }
+      if (!table || !editor.contains(table) || !editor.getClientRects().length) {
+        for (const handle of handles) placeHandleInHeader(handle, null);
+        outlineCell(null);
+        controls.hidden = true;
+        return;
+      }
+      const bounds = table.getBoundingClientRect();
+      const viewport = visibleDocument();
+      const left = Math.max(bounds.left, viewport.left);
+      const right = Math.min(bounds.right, viewport.right);
+      const top = Math.max(bounds.top, viewport.top);
+      const bottom = Math.min(bounds.bottom, viewport.bottom);
+      controls.hidden = right - left < 32 || bottom - top < 24;
+      if (controls.hidden) {
+        for (const handle of handles) handle.hidden = true;
+        outlineCell(null);
+        closeMenu();
+        return;
+      }
+      const origin = controls.getBoundingClientRect();
+      const place = (element, x, y) => {
+        element.style.left = x - origin.left + "px";
+        element.style.top = y - origin.top + "px";
+      };
+      const buttonGap = 8, buttonSize = 23;
+      const centerX = (bounds.left + bounds.right - buttonSize) / 2;
+      const centerY = (bounds.top + bounds.bottom - buttonSize) / 2;
+      const optionsX = bounds.left - buttonSize - buttonGap;
+      options.hidden = bounds.top < top || optionsX < viewport.left;
+      if (options.hidden && menuAnchor === options) closeMenu();
+      addRow.hidden = bounds.bottom + buttonGap + buttonSize > viewport.bottom || centerX < left || centerX + buttonSize > right;
+      addColumn.hidden = bounds.right + buttonGap + buttonSize > viewport.right || centerY < top || centerY + buttonSize > bottom;
+      place(options, optionsX, bounds.top + 2);
+      place(addRow, centerX, bounds.bottom + buttonGap);
+      place(addColumn, bounds.right + buttonGap, centerY);
+      const canChange = simpleTable(table);
+      for (const button of [addRow, addColumn, ...menu.querySelectorAll('[data-table-action^="insert-"]')]) button.disabled = !canChange;
+      const wholeTable = menuAnchor === options;
+      const edgeCell = hoverCell?.closest("table") === table && !menuAnchor && !reorder ? hoverCell : cell;
+      const row = table.rows[edgeCell.parentElement.rowIndex];
+      const column = table.rows[0].cells[edgeCell.cellIndex];
+      const pinnedHeader = hasHeaderRow(table);
+      for (const handle of handles) {
+        const isColumn = handle.dataset.tableAxis === "column";
+        const edgeCell2 = isColumn ? column : row.cells[0];
+        const edge = edgeCell2?.getBoundingClientRect();
+        const anchored = canChange && pinnedHeader && (isColumn || row.rowIndex === 0);
+        const x = edge ? isColumn ? (edge.left + edge.right) / 2 : edge.left + 0.5 : bounds.left;
+        const y = edge ? isColumn ? edge.top + 0.5 : (edge.top + edge.bottom) / 2 : bounds.top;
+        const handleTop = isColumn ? top : visibleCellTop(row.cells[0], top);
+        handle.hidden = wholeTable || !canChange || !edge || x < left - 1 || x > right || y < handleTop || y > bottom;
+        handle.classList.toggle("can-reorder", canChange && canMoveAxis(table, handle.dataset.tableAxis, isColumn ? edgeCell2.cellIndex : row.rowIndex));
+        if (reorder?.handle !== handle) placeHandleInHeader(handle, anchored ? edgeCell2 : null);
+        if (!anchored) place(handle, x, y);
+      }
+      if (menuAnchor?.hidden) closeMenu();
+      outlineCell(wholeTable || reorder?.active || getSelection()?.isCollapsed === false ? null : cell);
+      outline.hidden = !wholeTable;
+      if (wholeTable) {
+        place(outline, left, top);
+        outline.style.width = right - left + "px";
+        outline.style.height = bottom - top + "px";
+      }
+      for (const [action, button] of buttons) button.disabled = !canUseTableAction(table, cell, action);
+      buttons.get("header-row").setAttribute("aria-pressed", String(hasHeaderRow(table)));
+      buttons.get("header-column").setAttribute("aria-pressed", String(table.dataset.headerColumn === "true"));
+      if (menuAnchor) {
+        const anchor = menuAnchor.getBoundingClientRect();
+        const menuLeft = Math.max(8, Math.min(anchor.left, innerWidth - menu.offsetWidth - 8));
+        const below = innerHeight - anchor.bottom - 8, above = anchor.top - 8;
+        const opensUp = menu.scrollHeight > below && above > below;
+        menu.style.maxHeight = Math.max(0, opensUp ? above : below) + "px";
+        menu.style.left = menuLeft + "px";
+        menu.style.top = (opensUp ? anchor.top - menu.offsetHeight - 4 : anchor.bottom + 4) + "px";
+      }
+      if (reorder?.active) showReorder();
+    }
+    listen(document, "selectionchange", () => {
+      scheduleTextSelection();
+      if (menuAnchor || reorder || drag || tableDrag) return;
+      const anchor = getSelection().anchorNode;
+      const element = anchor?.nodeType === 1 ? anchor : anchor?.parentElement;
+      if (element && editor.contains(element)) activate(element.closest("td,th"));
+    });
+    listen(document, "pointerdown", (event) => {
+      if (!tableDrag && event.target !== blockHandle) hideBlockHandle();
+      if (controls.contains(event.target) || event.target === blockHandle || event.target.closest(".note-table-handle") || tableDrag) return;
+      closeMenu();
+      hoverCell = null;
+      if (editor.contains(event.target)) activate(event.target.closest("td,th"));
+      else activate(null);
+    });
+    function refreshLayout() {
+      if (!tableDrag) hideBlockHandle();
+      position();
+      scheduleTextSelection();
+    }
+    listen(document, "scroll", refreshLayout, true);
+    listen(window, "resize", refreshLayout);
+    listen(editor, "input", () => {
+      if (!tableDrag) hideBlockHandle();
+      textDrag = null;
+      scheduleTextSelection();
+      if (!cell || !editor.contains(cell)) activate(null);
+      else position();
+    });
+    function columnEdge(event) {
+      const target = event.target.closest("th,td");
+      const targetTable = target?.closest("table");
+      if (!targetTable || !editor.contains(targetTable)) return null;
+      const bounds = target.getBoundingClientRect();
+      if (Math.abs(event.clientX - bounds.right) <= 5) return target;
+      if (Math.abs(event.clientX - bounds.left) <= 5) return target.previousElementSibling;
+      return null;
+    }
+    const dragThreshold = 5;
+    function restoreResize(current) {
+      widthGroup(current.table)?.remove();
+      for (const { group, next } of current.originalGroups.reverse()) current.table.insertBefore(group, next);
+      current.table.style.width = current.originalWidth;
+    }
+    function moveResize(event) {
+      if (!drag) {
+        if (textDrag && event.buttons & 1 || event.target.closest(".note-table-handle")) return;
+        const target = event.target.closest("td,th");
+        const bounds = target?.getBoundingClientRect();
+        const edgeTarget = target && (target.parentElement.rowIndex === 0 && Math.abs(event.clientY - bounds.top) <= 10 || target.cellIndex === 0 && Math.abs(event.clientX - bounds.left) <= 10) ? target : null;
+        const edge = columnEdge(event);
+        const resizable = Boolean(edge && simpleTable(edge.closest("table")));
+        if (!menuAnchor && !resizable && hoverCell !== edgeTarget) {
+          hoverCell = edgeTarget;
+          if (edgeTarget && edgeTarget.closest("table") !== table) activate(edgeTarget);
+          else position();
+        }
+        editor.classList.toggle("note-column-resizing", resizable);
+        return;
+      }
+      if (drag.pointerId !== event.pointerId) return;
+      const distance = Math.round(event.clientX - drag.start);
+      if (!drag.active) {
+        if (Math.abs(distance) < dragThreshold) return;
+        const { edge } = drag;
+        drag.widths = Array.from(edge.parentElement.cells, (column) => Math.max(minimumWidth, Math.round(column.getBoundingClientRect().width)));
+        drag.originalWidth = drag.table.style.width;
+        drag.originalGroups = Array.from(drag.table.querySelectorAll(":scope > colgroup"), (group) => ({ group, next: group.nextSibling }));
+        for (const { group } of drag.originalGroups) group.remove();
+        writeColumnWidths(drag.table, drag.widths);
+        drag.column = widthGroup(drag.table).children[drag.index];
+        drag.total = drag.widths.reduce((total, width2) => total + width2, 0);
+        drag.active = true;
+        editor.classList.add("note-column-resize-preview");
+        closeMenu();
+        hoverCell = null;
+      }
+      const width = drag.widths[drag.index];
+      drag.delta = Math.max(minimumWidth - width, Math.min(Math.max(0, 2400 - width), distance));
+      drag.column.style.width = width + drag.delta + "px";
+      drag.table.style.width = drag.total + drag.delta + "px";
+      position();
+      scheduleTextSelection();
+    }
+    function finishResize(event) {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      if (event.type === "pointerup" && drag.active) moveResize(event);
+      const current = drag;
+      drag = null;
+      editor.classList.remove("note-column-resizing", "note-column-resize-preview");
+      if (!current.active) return;
+      if (event.type === "pointerup" && current.delta && editor.contains(current.table)) {
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+      } else {
+        restoreResize(current);
+        position();
+        scheduleTextSelection();
+      }
+    }
+    listen(editor, "pointermove", moveResize);
+    listen(editor, "pointerleave", () => {
+      if (!drag) editor.classList.remove("note-column-resizing");
+    });
+    listen(editor, "pointerdown", (event) => {
+      if (event.button !== 0 || drag || reorder || tableDrag) return;
+      const edge = columnEdge(event);
+      const targetTable = edge?.closest("table");
+      if (!targetTable || !simpleTable(targetTable)) return;
+      textDrag = null;
+      event.preventDefault();
+      event.stopPropagation();
+      drag = {
+        table: targetTable,
+        index: edge.cellIndex,
+        pointerId: event.pointerId,
+        start: event.clientX,
+        edge,
+        delta: 0,
+        active: false
+      };
+      editor.classList.add("note-column-resizing");
+      editor.setPointerCapture(event.pointerId);
+    });
+    for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) listen(editor, type, finishResize);
+    function showTableDrag() {
+      const { x, y, source, copy, offsetX, offsetY } = tableDrag;
+      const { left, top, right, bottom } = visibleDocument();
+      Object.assign(preview.style, { left: left + "px", top: top + "px", width: Math.max(0, right - left) + "px", height: Math.max(0, bottom - top) + "px" });
+      copy.style.left = x - offsetX - left + "px";
+      copy.style.top = y - offsetY - top + "px";
+      const target = x >= left - 40 && x <= right && y >= top && y <= bottom ? documentDropTarget(editor, y) : null;
+      const following = source.nextElementSibling;
+      tableDrag.target = target && target.before !== source && (source.parentElement !== editor || target.before !== following) && target.y >= top && target.y <= bottom ? target : null;
+      guide.hidden = !tableDrag.target;
+      if (tableDrag.target) {
+        Object.assign(guide.style, { left: left + "px", top: target.y + "px", width: right - left + "px", height: "2px" });
+      }
+    }
+    function scrollTableDrag() {
+      if (!tableDrag?.active) return;
+      for (let scroller = scrollPort; scroller; scroller = scroller.parentElement) {
+        if (scroller.scrollHeight <= scroller.clientHeight || scroller !== document.scrollingElement && !/auto|scroll/.test(getComputedStyle(scroller).overflowY)) continue;
+        const rect = scroller.getBoundingClientRect();
+        const top = Math.max(0, rect.top), bottom = Math.min(innerHeight, rect.bottom);
+        const y = tableDrag.y;
+        const distance = y < top + 32 ? Math.max(-16, (y - top - 32) / 2) : y > bottom - 32 ? Math.min(16, (y - bottom + 32) / 2) : 0;
+        if (!distance) continue;
+        const previous2 = scroller.scrollTop;
+        scroller.scrollTop += distance;
+        if (previous2 !== scroller.scrollTop) {
+          showTableDrag();
+          break;
+        }
+      }
+      tableDrag.frame = requestAnimationFrame(scrollTableDrag);
+    }
+    function finishTableDrag(event) {
+      if (!tableDrag || tableDrag.id !== event.pointerId) return;
+      if (event.type === "pointerup" && tableDrag.active) {
+        tableDrag.x = event.clientX;
+        tableDrag.y = event.clientY;
+        showTableDrag();
+      }
+      const { active, source, target, frame, id, handle } = tableDrag;
+      tableDrag = null;
+      if (handle.hasPointerCapture(id)) handle.releasePointerCapture(id);
+      if (!active) {
+        if (handle === blockHandle && event.type === "pointerup") {
+          const hit = blockHandle.getBoundingClientRect();
+          if (event.clientX >= hit.left && event.clientX <= hit.right && event.clientY >= hit.top && event.clientY <= hit.bottom) {
+            blockSelection.selectBlock(source);
+          }
+        }
+        return;
+      }
+      cancelAnimationFrame(frame);
+      if (handle === options) ignoreOptionsClick = true;
+      source.classList.remove("note-table-drag-source");
+      controls.classList.remove("is-moving-table");
+      blockHandle.classList.remove("is-moving-block");
+      hideBlockHandle();
+      preview.classList.remove("note-document");
+      preview.hidden = true;
+      preview.replaceChildren();
+      guide.hidden = true;
+      guide.style.width = "";
+      if (event.type === "pointerup" && target) {
+        editor.insertBefore(source, target.before);
+        editor.focus({ preventScroll: true });
+        const anchor = handle === options ? cell : source.matches("ul,ol") ? source.firstElementChild : source;
+        if (anchor) getSelection().collapse(anchor, 0);
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+      }
+      position();
+    }
+    for (const handle of [options, blockHandle]) {
+      listen(handle, "pointerdown", (event) => {
+        const source = handle === options ? table : hoveredBlock;
+        if (event.button !== 0 || drag || reorder || tableDrag || !source || !editor.contains(source)) return;
+        ignoreOptionsClick = false;
+        const bounds = source.getBoundingClientRect();
+        tableDrag = {
+          id: event.pointerId,
+          handle,
+          source,
+          startX: event.clientX,
+          startY: event.clientY,
+          offsetX: event.clientX - bounds.left,
+          offsetY: event.clientY - bounds.top,
+          width: bounds.width
+        };
+        handle.setPointerCapture(event.pointerId);
+      });
+      listen(handle, "pointermove", (event) => {
+        if (!tableDrag || tableDrag.id !== event.pointerId) return;
+        const { clientX: x, clientY: y } = event;
+        if (!tableDrag.active) {
+          if (Math.hypot(x - tableDrag.startX, y - tableDrag.startY) < dragThreshold) return;
+          closeMenu();
+          hoverCell = null;
+          const source = tableDrag.source;
+          blockSelection.clearBlockSelection(true);
+          const copy = source.matches("table") ? copyTable(source) : source.cloneNode(true);
+          copy.classList.add("note-table-drag-copy");
+          copy.style.width = tableDrag.width + "px";
+          preview.classList.add("note-document");
+          preview.replaceChildren(copy);
+          controls.hidden = false;
+          preview.hidden = false;
+          source.classList.add("note-table-drag-source");
+          controls.classList.add("is-moving-table");
+          blockHandle.classList.add("is-moving-block");
+          Object.assign(tableDrag, { active: true, copy });
+          tableDrag.frame = requestAnimationFrame(scrollTableDrag);
+        }
+        Object.assign(tableDrag, { x, y });
+        showTableDrag();
+      });
+      for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) listen(handle, type, finishTableDrag);
+    }
+    listen(blockHandle, "click", (event) => {
+      if (event.detail === 0 && hoveredBlock) blockSelection.selectBlock(hoveredBlock);
+    });
+    listen(document, "keydown", (event) => {
+      if (event.key !== "Escape" || !tableDrag?.active) return;
+      event.preventDefault();
+      finishTableDrag({ type: "pointercancel", pointerId: tableDrag.id });
+    });
+    function selectHandleCell() {
+      if (hoverCell?.closest("table") === table) {
+        const target = hoverCell;
+        hoverCell = null;
+        activate(target);
+      }
+    }
+    function showReorder() {
+      const { axis, from, start, point, sources, copies, handle } = reorder;
+      const across = axis === "column";
+      const bounds = table.getBoundingClientRect();
+      const { left, top, right, bottom } = visibleDocument();
+      const delta = point - start;
+      const sourceBoxes = sources.map((source) => source.getBoundingClientRect());
+      const items = across ? [...table.rows[0].cells] : [...table.rows];
+      const center = (box) => across ? (box.left + box.right) / 2 : (box.top + box.bottom) / 2;
+      const boxes = items.map((item) => item.getBoundingClientRect());
+      preview.style.left = left + "px";
+      preview.style.top = top + "px";
+      preview.style.width = Math.max(0, right - left) + "px";
+      preview.style.height = Math.max(0, bottom - top) + "px";
+      preview.hidden = false;
+      handle.style.translate = across ? delta + "px 0" : "0 " + delta + "px";
+      sourceBoxes.forEach((box, index) => {
+        const copy = copies[index];
+        copy.style.left = box.left - left + (across ? delta : 0) + "px";
+        copy.style.top = box.top - top + (across ? 0 : delta) + "px";
+        copy.style.width = box.width + "px";
+        copy.style.height = box.height + "px";
+      });
+      let to = firstMovableIndex(table, axis);
+      while (to + 1 < boxes.length && point > (center(boxes[to]) + center(boxes[to + 1])) / 2) to++;
+      reorder.to = to;
+      const target = boxes[to];
+      const x = across ? to > from ? target.right : target.left : Math.max(bounds.left, left);
+      const y = across ? Math.max(bounds.top, top) : to > from ? target.bottom : target.top;
+      guide.style.left = x + "px";
+      guide.style.top = y + "px";
+      guide.style.width = (across ? 2 : Math.max(0, Math.min(bounds.right, right) - x)) + "px";
+      guide.style.height = (across ? Math.max(0, Math.min(bounds.bottom, bottom) - y) : 2) + "px";
+      guide.hidden = to === from || (across ? x < left || x > right : y < top || y > bottom);
+    }
+    for (const handle of handles) {
+      handle.contentEditable = "false";
+      listen(handle, "mousedown", (event) => event.preventDefault());
+      listen(handle, "pointerdown", (event) => {
+        event.stopPropagation();
+        if (event.button !== 0 || drag || reorder || tableDrag || !cell || !simpleTable(table)) return;
+        ignoreHandleClick = false;
+        const sourceCell = hoverCell?.closest("table") === table ? hoverCell : cell;
+        const axis = handle.dataset.tableAxis;
+        const from = axis === "column" ? sourceCell.cellIndex : sourceCell.parentElement.rowIndex;
+        if (!canMoveAxis(table, axis, from)) return;
+        reorder = { axis, from, to: from, start: axis === "column" ? event.clientX : event.clientY, id: event.pointerId, active: false, handle, sourceCell, previousCell: cell };
+        handle.setPointerCapture(event.pointerId);
+      });
+      listen(handle, "pointermove", (event) => {
+        if (!reorder || reorder.id !== event.pointerId) return;
+        const across = reorder.axis === "column";
+        const point = across ? event.clientX : event.clientY;
+        if (!reorder.active && Math.abs(point - reorder.start) < dragThreshold) return;
+        if (!reorder.active) {
+          closeMenu();
+          cell = reorder.sourceCell;
+          hoverCell = null;
+          const sources = across ? Array.from(table.rows, (row) => row.cells[reorder.from]) : [...table.rows[reorder.from].cells];
+          const copies = sources.map((source) => {
+            const copy = document.createElement("div");
+            const style = getComputedStyle(source);
+            copy.className = "note-table-drag-cell";
+            copy.style.fontWeight = style.fontWeight;
+            if (style.backgroundColor !== "rgba(0, 0, 0, 0)") copy.style.backgroundColor = style.backgroundColor;
+            for (const node of source.childNodes) if (!handles.includes(node)) copy.append(node.cloneNode(true));
+            source.classList.add("note-table-drag-source");
+            return copy;
+          });
+          preview.replaceChildren(...copies);
+          outline.hidden = true;
+          Object.assign(reorder, { active: true, sources, copies, point });
+          position();
+          return;
+        }
+        reorder.point = point;
+        showReorder();
+      });
+      for (const type of ["pointerup", "pointercancel", "lostpointercapture"]) listen(handle, type, (event) => {
+        if (!reorder || reorder.id !== event.pointerId) return;
+        if (event.type === "pointerup" && reorder.active) {
+          reorder.point = reorder.axis === "column" ? event.clientX : event.clientY;
+          showReorder();
+        }
+        const { axis, from, to, active, sources, previousCell } = reorder;
+        reorder = null;
+        guide.hidden = true;
+        guide.style.width = "";
+        handle.style.translate = "";
+        preview.hidden = true;
+        preview.replaceChildren();
+        sources?.forEach((source) => source.classList.remove("note-table-drag-source"));
+        ignoreHandleClick = active;
+        if (event.type !== "pointerup" || !active || from === to) {
+          cell = previousCell;
+          position();
+          return;
+        }
+        moveAxis(table, axis, from, to);
+        editor.focus({ preventScroll: true });
+        getSelection().collapse(cell, 0);
+        position();
+        editor.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      listen(handle, "click", (event) => {
+        event.stopPropagation();
+        if (ignoreHandleClick && event.detail !== 0) return;
+        selectHandleCell();
+        openMenu(handle);
+      });
+    }
+    listen(editor, "keydown", (event) => {
+      if (!table || !event.altKey || event.key !== "ArrowDown") return;
+      event.preventDefault();
+      (handles.find((handle) => !handle.hidden) || options).focus();
+    });
+    function closeMenuOnEscape(event) {
+      if (event.key !== "Escape") return;
+      event.preventDefault();
+      const anchor = menuAnchor;
+      closeMenu();
+      position();
+      anchor?.focus();
+    }
+    listen(controls, "keydown", closeMenuOnEscape);
+    for (const handle of handles) listen(handle, "keydown", (event) => {
+      if (handle.classList.contains("is-anchored")) closeMenuOnEscape(event);
+    });
+    listen(controls, "mousedown", (event) => event.preventDefault());
+    listen(controls, "click", (event) => {
+      const button = event.target.closest("[data-table-action]");
+      if (!button || button.disabled || !cell || !editor.contains(cell)) return;
+      const action = button.dataset.tableAction;
+      if (action === "options") {
+        if (!ignoreOptionsClick || event.detail === 0) openMenu(options);
+        return;
+      }
+      if (!canUseTableAction(table, cell, action)) return;
+      if (action.startsWith("delete-") && pendingDelete?.button !== button) {
+        cancelDelete();
+        pendingDelete = { button, label: button.textContent };
+        button.textContent = "\u786E\u8BA4" + button.textContent;
+        return;
+      }
+      const next = changeTable(table, cell, action);
+      closeMenu();
+      editor.focus({ preventScroll: true });
+      getSelection().collapse(next, 0);
+      activate(next);
+      editor.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    return () => {
+      if (drag) finishResize({ type: "pointercancel", pointerId: drag.pointerId });
+      if (tableDrag) finishTableDrag({ type: "pointercancel", pointerId: tableDrag.id });
+      cancelAnimationFrame(selectionFrame);
+      selectionFrame = void 0;
+    };
+  }
+
+  // block-editor-kit/assets/caret.js
+  function attachCaret(body, scrollPort, listen) {
+    const graphemes = new Intl.Segmenter("zh-CN", { granularity: "grapheme" });
+    const caretMark = document.createElement("span");
+    caretMark.className = "bek-caret";
+    caretMark.hidden = true;
+    caretMark.setAttribute("aria-hidden", "true");
+    body.after(caretMark);
+    let caretFrame, composing = false;
+    let pressed;
+    function updateCaret() {
+      if (caretFrame !== void 0) return;
+      caretFrame = requestAnimationFrame(() => {
+        caretFrame = void 0;
+        const selection = getSelection();
+        const anchor = composing ? selection.focusNode : selection.anchorNode;
+        const anchorElement = anchor?.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor;
+        const row = anchorElement?.closest?.("tr");
+        const active = document.activeElement === body && (selection.isCollapsed || composing) && selection.rangeCount && body.contains(anchor) && (!row || getComputedStyle(row).position !== "sticky");
+        let visible = false;
+        if (active) {
+          const range = selection.getRangeAt(0).cloneRange();
+          if (composing) {
+            range.setStart(anchor, selection.focusOffset);
+            range.collapse(true);
+          }
+          const rect = range.getClientRects()[0];
+          const viewport = scrollPort.getBoundingClientRect();
+          const empty = body.dataset.empty === "true" && !body.querySelector("table");
+          const fallback = empty ? body.getBoundingClientRect() : null;
+          const metrics = getComputedStyle(anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor);
+          const height = rect?.height || parseFloat(metrics.fontSize);
+          const x = rect?.height ? rect.left : fallback?.left;
+          const y = rect?.height ? rect.top : fallback && fallback.top + (parseFloat(metrics.lineHeight) - height) / 2;
+          visible = x >= Math.max(0, viewport.left) && x <= Math.min(viewport.left + scrollPort.clientWidth, innerWidth) && y >= Math.max(0, viewport.top) && y + height <= Math.min(viewport.top + scrollPort.clientHeight, innerHeight);
+          if (visible) Object.assign(caretMark.style, { left: x + "px", top: y + "px", height: height + "px" });
+        }
+        caretMark.hidden = !visible;
+        caretMark.classList.toggle("is-composing", composing);
+        body.classList.toggle("bek-thin-caret", visible);
+      });
+    }
+    listen(document, "selectionchange", updateCaret);
+    listen(document, "scroll", updateCaret, true);
+    listen(window, "resize", updateCaret);
+    for (const type of ["focus", "blur", "input"]) listen(body, type, updateCaret);
+    for (const type of ["compositionstart", "compositionend"]) listen(body, type, (event) => {
+      composing = event.type === "compositionstart";
+      updateCaret();
+    });
+    listen(body, "compositionupdate", updateCaret);
+    listen(body, "pointerdown", (event) => {
+      pressed = event.button === 0 ? { x: event.clientX, y: event.clientY } : null;
+    });
+    listen(body, "click", (event) => {
+      const start = pressed;
+      pressed = null;
+      if (!start || event.detail !== 1 || event.shiftKey || event.metaKey || event.ctrlKey || event.altKey || Math.hypot(event.clientX - start.x, event.clientY - start.y) >= 5) return;
+      const { clientX: x, clientY: y } = event;
+      const cell = event.target.closest("td,th");
+      if (!cell && event.target.closest("table")) return;
+      if (!cell && body.dataset.empty === "true" && !body.querySelector("table")) {
+        body.focus({ preventScroll: true });
+        getSelection().collapse(body.firstElementChild?.matches("p,div") ? body.firstElementChild : body, 0);
+        updateCaret();
+        return;
+      }
+      if (!getSelection().isCollapsed) return;
+      const content = document.createRange();
+      content.selectNodeContents(body);
+      if (!cell && y > content.getBoundingClientRect().bottom) {
+        let line = body.lastElementChild;
+        if (!line?.matches("p,div") || line.textContent || line.querySelector("table") || line !== body.lastChild) {
+          line = document.createElement("p");
+          line.dataset.noteCaretLine = "";
+          line.append(document.createElement("br"));
+          body.append(line);
+        }
+        body.focus({ preventScroll: true });
+        getSelection().collapse(line, 0);
+        return;
+      }
+      const selection = getSelection();
+      const anchor = selection.anchorNode;
+      if (!anchor || !body.contains(anchor)) return;
+      const element = anchor.nodeType === Node.TEXT_NODE ? anchor.parentElement : anchor;
+      const block = element.closest("p,div,li,h2,h3,h4,blockquote,td,th") || body;
+      if (!body.contains(block) || cell && !cell.contains(block)) return;
+      const walker = document.createTreeWalker(block, NodeFilter.SHOW_TEXT);
+      const glyph = document.createRange();
+      let lineEnd;
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        if (node.parentElement.closest("td,th") !== cell) continue;
+        glyph.selectNodeContents(node);
+        if (!Array.from(glyph.getClientRects()).some((rect) => y >= rect.top && y <= rect.bottom)) continue;
+        for (const { index, segment } of graphemes.segment(node.data)) {
+          if (!/\S/u.test(segment)) continue;
+          const end = index + segment.length;
+          glyph.setStart(node, index);
+          glyph.setEnd(node, end);
+          for (const rect of glyph.getClientRects()) {
+            if (y < rect.top || y > rect.bottom || !rect.width) continue;
+            if (x >= rect.left && x <= rect.right) {
+              selection.collapse(node, end);
+              return;
+            }
+            if (!lineEnd || rect.right >= lineEnd.right) lineEnd = { node, end, right: rect.right };
+          }
+        }
+      }
+      if (lineEnd) selection.collapse(lineEnd.node, lineEnd.end);
+    });
+    return () => cancelAnimationFrame(caretFrame);
+  }
+
+  // block-editor-kit/assets/viewport.js
+  function keepNewBlockInView(editor, scrollPort, expectedLine) {
+    const selection = editor.ownerDocument.getSelection();
+    if (editor.ownerDocument.activeElement !== editor || !selection?.isCollapsed || !selection.rangeCount || !editor.contains(selection.focusNode)) return 0;
+    const anchor = selection.focusNode;
+    const element = anchor.nodeType === 3 ? anchor.parentElement : anchor;
+    const line = element.closest("li,p,h2,h3,h4,blockquote");
+    if (!line || expectedLine && line !== expectedLine || line.closest("table")) return 0;
+    const rect = selection.getRangeAt(0).getClientRects()[0];
+    const view = editor.ownerDocument.defaultView;
+    const padding = parseFloat(view.getComputedStyle(editor).paddingBottom) || 0;
+    const lineBox = line.getBoundingClientRect();
+    const lineHeight = parseFloat(view.getComputedStyle(line).lineHeight) || lineBox.height;
+    const caretBottom = rect?.height ? rect.bottom : lineBox.top + Math.min(lineBox.height, lineHeight);
+    const viewport = scrollPort.getBoundingClientRect();
+    const bottom = viewport.top + scrollPort.clientTop + scrollPort.clientHeight;
+    const safe = Math.min(padding, Math.max(0, scrollPort.clientHeight - lineHeight));
+    const delta = Math.ceil(caretBottom + safe - bottom);
+    if (delta <= 0 || !scrollPort.clientHeight) return 0;
+    const previous2 = scrollPort.scrollTop;
+    scrollPort.scrollTop = Math.min(previous2 + delta, Math.max(0, scrollPort.scrollHeight - scrollPort.clientHeight));
+    return scrollPort.scrollTop - previous2;
+  }
+  function attachEditorViewport(editor, scrollPort, listen) {
+    let followFrame, fitFrame;
+    const followNewBlock = (line) => {
+      cancelAnimationFrame(followFrame);
+      followFrame = requestAnimationFrame(() => keepNewBlockInView(editor, scrollPort, line));
+    };
+    function fitTables() {
+      fitFrame = void 0;
+      if (!editor.clientWidth) return;
+      for (const table of editor.querySelectorAll(":scope > table")) {
+        const columns = [...table.querySelectorAll(":scope > colgroup[data-note-widths] > col")];
+        const widths = columns.map((col) => parseFloat(col.style.width) || 0);
+        const sum = widths.reduce((total, width) => total + width, 0);
+        const fit = columns.length > 0 && Math.max(sum, parseFloat(table.style.width) || 0) > editor.clientWidth;
+        table.classList.toggle("bek-table-fit", fit);
+        if (!fit) continue;
+        for (let i = 0; i < columns.length; i++) {
+          const width = sum && widths[i] ? (widths[i] / sum * 100).toFixed(4) + "%" : "auto";
+          if (columns[i].style.getPropertyValue("--bek-fit-column") !== width) {
+            columns[i].style.setProperty("--bek-fit-column", width);
+          }
+        }
+      }
+    }
+    const scheduleFit = () => {
+      if (fitFrame === void 0) fitFrame = requestAnimationFrame(fitTables);
+    };
+    const view = editor.ownerDocument.defaultView;
+    const resize = view.ResizeObserver ? new view.ResizeObserver(scheduleFit) : null;
+    resize?.observe(editor);
+    const mutation = new view.MutationObserver(scheduleFit);
+    mutation.observe(editor, { childList: true, subtree: true, attributes: true, attributeFilter: ["style"] });
+    listen(view, "resize", scheduleFit);
+    scheduleFit();
+    return {
+      followNewBlock,
+      cancelFollow() {
+        cancelAnimationFrame(followFrame);
+      },
+      destroy() {
+        cancelAnimationFrame(followFrame);
+        cancelAnimationFrame(fitFrame);
+        resize?.disconnect();
+        mutation.disconnect();
+      }
+    };
+  }
+
+  // block-editor-kit/assets/history.js
+  function createEditHistory(initialHTML2, limit = 100) {
+    const entries = [];
+    let html = initialHTML2;
+    let cursor = 0;
+    return {
+      get html() {
+        return html;
+      },
+      get canUndo() {
+        return cursor > 0;
+      },
+      get canRedo() {
+        return cursor < entries.length;
+      },
+      record(next, beforeSelection, afterSelection) {
+        if (next === html) return false;
+        let start = 0, end = 0;
+        const common = Math.min(html.length, next.length);
+        while (start < common && html[start] === next[start]) start++;
+        while (end < common - start && html[html.length - 1 - end] === next[next.length - 1 - end]) end++;
+        entries.splice(cursor);
+        entries.push({
+          start,
+          removed: html.slice(start, html.length - end),
+          added: next.slice(start, next.length - end),
+          beforeSelection,
+          afterSelection
+        });
+        if (entries.length > limit) entries.shift();
+        cursor = entries.length;
+        html = next;
+        return true;
+      },
+      step(redo) {
+        if (redo ? !this.canRedo : !this.canUndo) return null;
+        const edit = entries[redo ? cursor++ : --cursor];
+        const from = redo ? edit.removed : edit.added;
+        const to = redo ? edit.added : edit.removed;
+        html = html.slice(0, edit.start) + to + html.slice(edit.start + from.length);
+        return { html, selection: redo ? edit.afterSelection : edit.beforeSelection };
+      }
+    };
+  }
+  function endpoint(root, node, offset) {
+    if (!root.contains(node)) return null;
+    const path = [];
+    for (let current = node; current !== root; current = current.parentNode) {
+      path.unshift(Array.prototype.indexOf.call(current.parentNode.childNodes, current));
+    }
+    const range = root.ownerDocument.createRange();
+    range.selectNodeContents(root);
+    range.setEnd(node, offset);
+    return { path, offset, type: node.nodeType, textOffset: range.toString().length };
+  }
+  function captureSelection(root) {
+    const selection = root.ownerDocument.getSelection();
+    if (!selection?.rangeCount) return null;
+    const anchor = endpoint(root, selection.anchorNode, selection.anchorOffset);
+    const focus = endpoint(root, selection.focusNode, selection.focusOffset);
+    return anchor && focus ? { anchor, focus } : null;
+  }
+  function resolveEndpoint(root, point) {
+    let node = root;
+    for (const index of point.path) node = node?.childNodes[index];
+    if (node?.nodeType === point.type) {
+      const size = node.nodeType === 3 ? node.length : node.childNodes.length;
+      if (point.offset <= size && endpoint(root, node, point.offset).textOffset === point.textOffset) {
+        return [node, point.offset];
+      }
+    }
+    const walker = root.ownerDocument.createTreeWalker(root, 4);
+    let offset = point.textOffset;
+    while (node = walker.nextNode()) {
+      if (offset <= node.length) return [node, offset];
+      offset -= node.length;
+    }
+    return [root, root.childNodes.length];
+  }
+  function restoreSelection(root, saved) {
+    root.focus({ preventScroll: true });
+    const selection = root.ownerDocument.getSelection();
+    if (!saved) selection.collapse(root, root.childNodes.length);
+    else selection.setBaseAndExtent(...resolveEndpoint(root, saved.anchor), ...resolveEndpoint(root, saved.focus));
+  }
+
+  // block-editor-kit/assets/editor.js
+  var template = `
+ <div class="bek-tools">
+  <div class="note-rich-toolbar" role="group" aria-label="\u7F16\u8F91\u64CD\u4F5C">
+   <button data-history-undo type="button" data-tooltip="\u64A4\u9500" aria-label="\u64A4\u9500" aria-keyshortcuts="Control+Z Meta+Z" disabled><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3 2.5 6.5 6 10M3 6.5h6a4 4 0 0 1 4 4v1.5"/></svg></button>
+   <button data-history-redo type="button" data-tooltip="\u91CD\u505A" aria-label="\u91CD\u505A" aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y" disabled><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m10 3 3.5 3.5L10 10m3-3.5H7a4 4 0 0 0-4 4v1.5"/></svg></button>
+   <button data-insert-table type="button" data-tooltip="\u63D2\u5165\u8868\u683C" aria-label="\u63D2\u5165\u8868\u683C"><svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.25" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M2 6h12M2 10h12M6 2v12M10 2v12"/></svg></button>
+  </div>
+ </div>
+ <div class="bek-document-frame">
+ <div class="bek-document-scroll">
+ <div class="bek-document">
+ <textarea></textarea>
+ <div class="note-table-controls" hidden role="group" aria-label="\u8868\u683C\u64CD\u4F5C">
+  <div class="note-table-outline" hidden aria-hidden="true"></div>
+  <button type="button" class="note-table-handle note-table-column-handle" data-table-axis="column" aria-label="\u5217\u64CD\u4F5C\uFF0C\u62D6\u52A8\u8C03\u6574\u5217\u987A\u5E8F" aria-expanded="false" aria-controls="@menuId@" hidden><span aria-hidden="true"></span></button>
+  <button type="button" class="note-table-handle note-table-row-handle" data-table-axis="row" aria-label="\u884C\u64CD\u4F5C\uFF0C\u62D6\u52A8\u8C03\u6574\u884C\u987A\u5E8F" aria-expanded="false" aria-controls="@menuId@" hidden><span aria-hidden="true"></span></button>
+  <div class="note-table-options">
+   <button type="button" class="note-table-icon" data-table-action="options" title="\u70B9\u51FB\u6253\u5F00\u8868\u683C\u9009\u9879\uFF0C\u6309\u4F4F\u62D6\u52A8\u6574\u5F20\u8868\u683C" aria-label="\u8868\u683C\u9009\u9879\uFF0C\u62D6\u52A8\u79FB\u52A8\u6574\u5F20\u8868\u683C" aria-expanded="false" aria-controls="@menuId@">\u22EF</button>
+   <div id="@menuId@" class="note-table-menu" hidden>
+    <button type="button" data-table-action="header-row" aria-pressed="false">\u6807\u9898\u884C</button>
+    <button type="button" data-table-action="header-column" aria-pressed="false">\u6807\u9898\u5217</button>
+    <button type="button" data-table-action="insert-row-above">\u5728\u4E0A\u65B9\u63D2\u5165\u884C</button>
+    <button type="button" data-table-action="insert-row">\u5728\u4E0B\u65B9\u63D2\u5165\u884C</button>
+    <button type="button" data-table-action="insert-column-left">\u5728\u5DE6\u4FA7\u63D2\u5165\u5217</button>
+    <button type="button" data-table-action="insert-column">\u5728\u53F3\u4FA7\u63D2\u5165\u5217</button>
+    <button type="button" data-table-action="delete-row">\u5220\u9664\u5F53\u524D\u884C</button>
+    <button type="button" data-table-action="delete-column">\u5220\u9664\u5F53\u524D\u5217</button>
+    <button type="button" data-table-action="duplicate-table">\u590D\u5236\u8868\u683C</button>
+    <button type="button" data-table-action="delete-table">\u5220\u9664\u8868\u683C</button>
+   </div>
+  </div>
+  <button type="button" class="note-table-icon note-table-add-row" data-table-action="append-row" title="\u6DFB\u52A0\u4E00\u884C" aria-label="\u6DFB\u52A0\u4E00\u884C">+</button>
+  <button type="button" class="note-table-icon note-table-add-column" data-table-action="append-column" title="\u6DFB\u52A0\u4E00\u5217" aria-label="\u6DFB\u52A0\u4E00\u5217">+</button>
+  <div class="note-table-resize-guide" hidden aria-hidden="true"></div>
+  <div class="note-table-drag-preview" hidden inert aria-hidden="true"></div>
+ </div>
+ <div class="note-text-selection" aria-hidden="true"></div>
+ </div>
+ </div>
+ </div>
+`;
+  var nextMenuId = 0;
+  function mountBlockEditor(host, {
+    html = "",
+    text = "",
+    label = "\u6B63\u6587",
+    placeholder = "\u5F00\u59CB\u8F93\u5165\u2026",
+    onChange
+  } = {}) {
+    if (!(host instanceof HTMLElement)) throw new TypeError("An HTML host element is required");
+    const root = document.createElement("div");
+    root.className = "block-editor-kit";
+    root.innerHTML = template.replaceAll("@menuId@", "bek-table-menu-" + ++nextMenuId);
+    host.append(root);
+    const lifetime = new AbortController();
+    const listen = (target, event, handler, capture = false) => {
+      target.addEventListener(event, handler, { capture, signal: lifetime.signal });
+    };
+    const textarea = root.querySelector("textarea");
+    textarea.setAttribute("aria-label", label);
+    textarea.placeholder = placeholder;
+    const editor = createRichText(textarea, root.querySelector(".bek-tools"), listen, (line) => viewport.followNewBlock(line));
+    const scrollPort = root.querySelector(".bek-document-scroll");
+    const viewport = attachEditorViewport(editor.element, scrollPort, listen);
+    const cancelTableInteraction = attachTableControls(
+      editor.element,
+      scrollPort,
+      root.querySelector(".note-table-controls"),
+      root.querySelector(".note-text-selection"),
+      listen,
+      editor
+    );
+    const stopCaret = attachCaret(editor.element, scrollPort, listen);
+    const insertTable = root.querySelector("[data-insert-table]");
+    listen(insertTable, "mousedown", (event) => event.preventDefault());
+    listen(insertTable, "click", editor.insertTable);
+    editor.set(text, html);
+    const element = editor.element;
+    const undoButton = root.querySelector("[data-history-undo]");
+    const redoButton = root.querySelector("[data-history-redo]");
+    let history = createEditHistory(editor.html());
+    let beforeSelection = null;
+    let composing = false, pending2 = false, generation = 0, destroyed = false;
+    function refreshHistoryButtons() {
+      undoButton.disabled = composing || !history.canUndo;
+      redoButton.disabled = composing || !history.canRedo;
+    }
+    function rememberBefore() {
+      if (pending2 || composing) return;
+      const selection = captureSelection(element);
+      if (selection) beforeSelection = selection;
+    }
+    function commit() {
+      if (!pending2 || composing || destroyed) return;
+      pending2 = false;
+      const next = editor.html();
+      const selection = captureSelection(element);
+      const changed = history.record(next, beforeSelection, selection);
+      if (selection) beforeSelection = selection;
+      refreshHistoryButtons();
+      if (changed) onChange?.(next);
+    }
+    function queueCommit() {
+      if (pending2) return;
+      pending2 = true;
+      const expected = generation;
+      queueMicrotask(() => {
+        if (expected === generation) commit();
+      });
+    }
+    function step(redo) {
+      if (composing || destroyed) return false;
+      const activeHistory = history;
+      commit();
+      if (destroyed || activeHistory !== history) return false;
+      const next = history.step(redo);
+      if (!next) return false;
+      viewport.cancelFollow();
+      cancelTableInteraction();
+      editor.set("", next.html);
+      restoreSelection(element, next.selection);
+      beforeSelection = captureSelection(element);
+      refreshHistoryButtons();
+      onChange?.(next.html);
+      return true;
+    }
+    listen(root, "keydown", (event) => {
+      if (event.isComposing || composing || event.keyCode === 229 || event.altKey || event.metaKey === event.ctrlKey) return;
+      const key = event.key.toLowerCase();
+      const undo = key === "z" && !event.shiftKey;
+      const redo = key === "z" && event.shiftKey || key === "y" && event.ctrlKey && !event.shiftKey;
+      if (!undo && !redo) return;
+      event.preventDefault();
+      event.stopPropagation();
+      step(redo);
+    }, true);
+    listen(element, "beforeinput", (event) => {
+      if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
+        if (event.cancelable) {
+          event.preventDefault();
+          if (!event.isComposing) step(event.inputType === "historyRedo");
+        }
+        return;
+      }
+      rememberBefore();
+    }, true);
+    listen(element, "input", (event) => {
+      if (event.inputType === "historyUndo" || event.inputType === "historyRedo") {
+        if (composing) return;
+        const redo = event.inputType === "historyRedo";
+        cancelTableInteraction();
+        editor.set("", history.html);
+        restoreSelection(element, beforeSelection);
+        step(redo);
+        return;
+      }
+      if (!event.isComposing && !composing) queueCommit();
+    });
+    listen(element, "compositionstart", () => {
+      commit();
+      rememberBefore();
+      composing = true;
+      refreshHistoryButtons();
+    });
+    listen(element, "compositionend", () => {
+      composing = false;
+      queueCommit();
+      refreshHistoryButtons();
+    });
+    listen(document, "selectionchange", rememberBefore);
+    for (const event of ["keydown", "pointerdown", "paste", "cut"]) listen(root, event, rememberBefore, true);
+    for (const [button, redo] of [[undoButton, false], [redoButton, true]]) {
+      listen(button, "mousedown", (event) => event.preventDefault());
+      listen(button, "click", () => step(redo));
+    }
+    return {
+      element,
+      setContent({ html: html2 = "", text: text2 = "" } = {}) {
+        ++generation;
+        pending2 = false;
+        composing = false;
+        beforeSelection = null;
+        viewport.cancelFollow();
+        cancelTableInteraction();
+        editor.set(text2, html2);
+        history = createEditHistory(editor.html());
+        refreshHistoryButtons();
+      },
+      undo: () => step(false),
+      redo: () => step(true),
+      canUndo: () => !composing && history.canUndo,
+      canRedo: () => !composing && history.canRedo,
+      getHTML: editor.html,
+      getText: editor.text,
+      destroy() {
+        if (destroyed) return;
+        destroyed = true;
+        pending2 = false;
+        cancelTableInteraction();
+        stopCaret();
+        viewport.destroy();
+        lifetime.abort();
+        root.remove();
+      }
+    };
+  }
+
+  var storageKey = "block-editor-kit.public-demo.v023.document";
+  var status = document.querySelector("#status");
+  var initialHTML = '<h3>\u590D\u5236\u4E0E\u7C98\u8D34\u4F53\u9A8C \xB7 0.2.3</h3><p>\u4E09\u51FB\u4E0B\u65B9\u7684\u300C\u6D4B\u8BD5\u300D\uFF0C\u590D\u5236\u540E\u7C98\u8D34\u5230\u539F\u6587\u5B57\u672B\u5C3E\u3002\u518D\u8BD5\u8BD5\u5355\u51FB\u5B83\u5DE6\u4FA7\u7684\u64CD\u4F5C\u6746\uFF0C\u590D\u5236\u6574\u5757\u3002</p><ul><li>\u5728\u5217\u8868\u4E2D\u6309 Tab \u7F29\u8FDB</li><li>\u7528 Shift+Tab \u9000\u56DE\u4E0A\u4E00\u7EA7</li></ul><ol><li>\u6D4B\u8BD5</li></ol><table data-header-row="true"><tbody><tr><th>\u4E8B\u9879</th><th>\u8BF4\u660E</th></tr><tr><td>\u5757\u7F16\u8F91</td><td>\u8F93\u5165 * \u548C\u7A7A\u683C\u521B\u5EFA\u9879\u76EE\u7B26\u53F7</td></tr><tr><td>\u8868\u683C</td><td>\u70B9\u51FB\u5DE6\u4E0A\u89D2\u83DC\u5355\u8C03\u6574\u7ED3\u6784</td></tr></tbody></table>';
+  var previous = initialHTML;
+  try {
+    previous = localStorage.getItem(storageKey) ?? initialHTML;
+  } catch {
+    status.textContent = "\u5F53\u524D\u6D4F\u89C8\u5668\u65E0\u6CD5\u8BFB\u53D6\u672C\u5730\u8349\u7A3F";
+  }
+  var timer;
+  var pending;
+  function save() {
+    if (pending === void 0) return;
+    try {
+      localStorage.setItem(storageKey, pending);
+      pending = void 0;
+      status.textContent = "\u5DF2\u4FDD\u5B58\u5230\u5F53\u524D\u6D4F\u89C8\u5668";
+    } catch {
+      status.textContent = "\u672C\u5730\u4FDD\u5B58\u5931\u8D25";
+    }
+  }
+  const demoEditor = mountBlockEditor(document.querySelector("#editor"), {
+    label: "\u793A\u4F8B\u6B63\u6587",
+    html: previous,
+    onChange(html) {
+      pending = html;
+      status.textContent = "\u5F85\u4FDD\u5B58";
+      clearTimeout(timer);
+      timer = setTimeout(save, 600);
+    }
+  });
+  document.querySelector("#reset").addEventListener("click", () => {
+    clearTimeout(timer);
+    demoEditor.setContent({html: initialHTML});
+    pending = initialHTML;
+    save();
+  });
+  window.addEventListener("pagehide", save);
+  document.querySelector("#theme").addEventListener("click", (event) => {
+    const enabled = document.documentElement.dataset.theme !== "dark";
+    document.documentElement.dataset.theme = enabled ? "dark" : "light";
+    event.currentTarget.setAttribute("aria-pressed", enabled);
+    event.currentTarget.textContent = enabled ? "浅色模式" : "深色模式";
+  });
+})();
+</script>
+</body>
+</html>

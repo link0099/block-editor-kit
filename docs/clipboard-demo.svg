@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="400" viewBox="0 0 960 400" role="img" aria-labelledby="t d">
+<title id="t">Block Editor Kit: text selection versus block selection</title><desc id="d">Text paste stays inside the same line. Block paste makes a new numbered item.</desc>
+<style>.scene{animation:step 15s infinite;opacity:0}.two{animation-name:step2}.three{opacity:1;animation-name:step3}@keyframes step{0%,29%{opacity:1}34%,100%{opacity:0}}@keyframes step2{0%,29%{opacity:0}34%,62%{opacity:1}67%,100%{opacity:0}}@keyframes step3{0%,62%{opacity:0}67%,95%{opacity:1}100%{opacity:0}}@media(prefers-reduced-motion:reduce){.scene{animation:none}.three{opacity:1}}</style>
+<rect width="960" height="400" rx="20" fill="#edf3fa"/>
+<g font-family="system-ui,sans-serif" fill="#132441">
+<text x="44" y="52" font-size="24" font-weight="750">Block Editor Kit</text><text x="916" y="52" text-anchor="end" font-size="15" fill="#385c93">CLIPBOARD BEHAVIOR · 15s</text>
+<rect x="44" y="80" width="426" height="239" rx="16" fill="#fff"/><rect x="490" y="80" width="426" height="239" rx="16" fill="#fff"/>
+<text x="72" y="124" font-size="21" font-weight="700">01 · Select the text</text><text x="518" y="124" font-size="21" font-weight="700">02 · Select the block</text>
+<text x="72" y="155" font-size="16" fill="#465b7b">Triple-click or drag across the text</text><text x="518" y="155" font-size="16" fill="#465b7b">Click the six-dot handle</text>
+<g class="scene one"><rect x="106" y="197" width="80" height="29" rx="4" fill="#cddfff"/><rect x="517" y="194" width="368" height="37" rx="7" fill="#e3edff"/><text x="80" y="219" font-size="20">1.  Sample</text><text x="530" y="219" font-size="20">⠿   1.  Sample</text><text x="480" y="367" text-anchor="middle" font-size="19">Same content, two kinds of selection.</text></g>
+<g class="scene two"><text x="80" y="219" font-size="20">1.  Sample</text><text x="530" y="219" font-size="20">1.  Sample</text><text x="80" y="263" font-size="16" fill="#385c93">Copy → place cursor → paste</text><text x="530" y="263" font-size="16" fill="#385c93">Copy → place cursor → paste</text><text x="480" y="367" text-anchor="middle" font-size="19">Use the same copy and paste shortcuts.</text></g>
+<g class="scene three"><text x="80" y="219" font-size="20">1.  SampleSample</text><text x="530" y="219" font-size="20">1.  Sample</text><text x="530" y="253" font-size="20">2.  Sample</text><text x="80" y="290" font-size="16" fill="#385c93">Text stays on the same line</text><text x="530" y="290" font-size="16" fill="#385c93">A new numbered item appears</text><text x="480" y="367" text-anchor="middle" font-size="19">Plain text vs. a new block</text></g>
+</g></svg>
